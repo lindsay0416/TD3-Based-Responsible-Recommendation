@@ -162,10 +162,10 @@ The system tracks multiple reward types:
 ## 📈 Expected Results
 
 The system should progressively:
-1. **Reduce PP1 distances** (users closer to optimal belief center)
-2. **Decrease cluster distances** (more balanced content consumption)
-3. **Increase belief diversity** (reduced filter bubble effects)
-4. **Improve recommendation acceptance** while maintaining relevance
+<!-- 1. **Reduce PP1 distances** (users closer to optimal belief center) -->
+1. **Decrease cluster distances** (more balanced content consumption)
+2. **Increase belief diversity** (reduced filter bubble effects)
+3. **Improve recommendation acceptance** while maintaining relevance
 
 ## 🛠️ Customization
 
