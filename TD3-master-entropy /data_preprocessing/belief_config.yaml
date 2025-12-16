@@ -1,0 +1,44 @@
+# Configuration for User Belief Processing Pipeline
+# Edit the source files below and run: python data_preprocessing/process_user_beliefs.py
+# python data_preprocessing/process_user_beliefs.py --config belief_config.yaml
+
+
+# Input files
+input_files:
+  # Raw user behavior data (CSV with 'impression' column)
+  behaviors_csv: "../data/new_behaviors_filtered.csv"
+  
+  # Cluster manifest JSON file
+  cluster_manifest: "../embeddings/news/cluster_matrix_manifest_K5_topk5.json"
+  
+  # Optional: Natural belief target (if exists, will be used for constraints)
+  natural_belief_target: "processed_data/natural_belief_target.json"
+
+# Output files
+output_files:
+  # Intermediate TSV file (will be created)
+  user_beliefs_tsv: "embeddings/news/user_beliefs_K5_topk5.tsv"
+  
+  # Final output files
+  user_average_beliefs_pkl: "processed_data/news/user_average_beliefs.pkl"
+  user_average_beliefs_json: "processed_data/news/user_average_beliefs.json"
+
+# Processing parameters
+processing:
+  # Belief calculation weights
+  positive_weight: 1.0      # Weight for clicked items
+  negative_weight: 0.0      # Weight for non-clicked exposures (0.0 = ignore, negative = penalize)
+  alpha_smoothing: 0.01     # Smoothing factor to prevent zero scores
+  
+  # Constrained normalization (set to false for raw counts)
+  use_constrained_normalization: true
+  base_ratio: 0.3           # 30% of optimal as baseline
+  max_ratio: 0.8            # 80% of optimal as upper limit
+  
+  # Fallback if natural_belief_target not found
+  fallback_uniform_beliefs: [0.2, 0.2, 0.2, 0.2, 0.2]
+
+# Logging
+logging:
+  verbose: true
+  show_samples: 5           # Number of sample users to display

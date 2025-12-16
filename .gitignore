@@ -1,1 +1,9 @@
-#
+data/
+__pycache__
+models/
+results/
+td3_actor_analysis/
+.history
+*.pyc
+embeddings/
+processed_data/

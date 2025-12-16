@@ -1,0 +1,42 @@
+# Configuration for Natural Belief Target Generation
+# Edit the paths below and run: python data_preprocessing/generate_natural_target.py
+
+# Input files
+input_files:
+  # Cluster manifest JSON file (contains cluster_to_items mapping)
+  cluster_manifest: "embeddings/news/cluster_matrix_manifest_K5_topk5.json"
+
+# Output files
+output_files:
+  # Main target file (JSON format with metadata)
+  natural_belief_target_json: "processed_data/natural_belief_target.json"
+  
+  # Binary file for fast loading in RL environment
+  natural_belief_target_pkl: "processed_data/natural_belief_target.pkl"
+  
+  # Utility functions for filter bubble measurement
+  filter_bubble_utilities: "processed_data/filter_bubble_utilities.py"
+
+# Processing options
+processing:
+  # Number of clusters expected (for validation)
+  expected_clusters: 5
+
+# Output options
+output:
+  # Generate utility functions file
+  generate_utilities: true
+  
+  # Add example usage in utility functions
+  include_examples: true
+
+# Logging
+logging:
+  # Show detailed progress
+  verbose: true
+  
+  # Show cluster size breakdown
+  show_cluster_details: true
+  
+  # Show belief calculation details
+  show_calculations: true

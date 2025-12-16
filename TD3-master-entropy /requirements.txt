@@ -1,0 +1,18 @@
+# Requirements for Recommendation RL System
+# Core ML/RL libraries
+torch>=1.9.0
+numpy>=1.21.0
+scikit-learn>=1.0.0
+
+# Data processing
+pandas>=1.3.0
+pyyaml>=5.4.0
+
+# Utilities
+tqdm>=4.62.0
+matplotlib>=3.4.0
+seaborn>=0.11.0
+
+# Optional: for GPU support
+# torch-audio  # Uncomment if needed
+# torch-vision # Uncomment if needed
