@@ -1,0 +1,97 @@
+# Movies Dataset Configuration
+# Supports multiple topk values by changing the topk parameter
+
+dataset: movies
+topk: 5  # Change to 15 for Topk15
+
+# Base paths (use {topk} placeholder)
+paths:
+  embeddings_base: "embeddings/movies/Topk{topk}"
+  processed_base: "processed_data/movies/Topk{topk}"
+  data_base: "data/movies"
+
+# ============================================
+# 1. Natural Belief Target Generation
+# Run: python data_preprocessing/generate_natural_target_unified.py --config data_preprocessing/dataset_config_movies.yaml
+# ============================================
+natural_target:
+  input:
+    cluster_manifest: "embeddings/movies/Topk{topk}/cluster_matrix_manifest_K5_topk{topk}.json"
+  output:
+    json: "processed_data/movies/Topk{topk}/natural_belief_target.json"
+    pkl: "processed_data/movies/Topk{topk}/natural_belief_target.pkl"
+    utilities: "processed_data/movies/Topk{topk}/filter_bubble_utilities.py"
+  options:
+    expected_clusters: 5
+    generate_utilities: true
+
+# ============================================
+# 2. User Average Beliefs Generation
+# Run: python data_preprocessing/regenerate_user_beliefs_unified.py --config data_preprocessing/dataset_config_movies.yaml
+# ============================================
+user_beliefs:
+  input:
+    behaviors_file: "data/movies/new_behaviors.tsv"
+    separator: "\t"
+    cluster_manifest: "embeddings/movies/Topk{topk}/cluster_matrix_manifest_K5_topk{topk}.json"
+    natural_belief_target: "processed_data/movies/Topk{topk}/natural_belief_target.json"
+  output:
+    json: "processed_data/movies/Topk{topk}/user_average_beliefs.json"
+    pkl: "processed_data/movies/Topk{topk}/user_average_beliefs.pkl"
+  options:
+    expected_clusters: 5
+
+# ============================================
+# 3. Cluster Embeddings Generation
+# Run: python data_preprocessing/calculate_cluster_embeddings_unified.py --config data_preprocessing/dataset_config_movies.yaml
+# ============================================
+cluster_embeddings:
+  input:
+    item_embeddings: "embeddings/movies/Topk{topk}/SGL/item_embedding.pkl"
+    cluster_manifest: "embeddings/movies/Topk{topk}/cluster_matrix_manifest_K5_topk{topk}.json"
+    item_token_map: "embeddings/movies/Topk{topk}/item_token_map.json"
+  output:
+    pkl: "processed_data/movies/Topk{topk}/cluster_embeddings.pkl"
+    npy: "processed_data/movies/Topk{topk}/cluster_embeddings.npy"
+    info_json: "processed_data/movies/Topk{topk}/cluster_embeddings_info.json"
+  options:
+    expected_clusters: 5
+
+# ============================================
+# 4. Cluster Node Distances with Tokens
+# Run: python data_preprocessing/preprocess_dataset.py --config data_preprocessing/dataset_config_movies.yaml --only node_distances_tokens
+# ============================================
+cluster_node_distances_tokens:
+  input:
+    cluster_node_distances_csv: "embeddings/movies/Topk{topk}/cluster_node_distances_K5_topk{topk}.csv"
+    item_token_map: "embeddings/movies/Topk{topk}/item_token_map.json"
+  output:
+    csv: "processed_data/movies/Topk{topk}/cluster_node_distances_tokens_K5_topk{topk}.csv"
+
+# ============================================
+# 5. Cluster Distances PT (PyTorch tensor for training)
+# ============================================
+cluster_distances_pt:
+  input:
+    cluster_node_distances_csv: "embeddings/movies/Topk{topk}/cluster_node_distances_K5_topk{topk}.csv"
+    item_token_map: "embeddings/movies/Topk{topk}/item_token_map.json"
+  output:
+    pt: "embeddings/movies/Topk{topk}/cluster_distances_K5_topk{topk}.pt"
+
+# ============================================
+# 6. Test Set CSV
+# ============================================
+test_set:
+  input:
+    behaviors_file: "data/movies/new_behaviors.tsv"
+    separator: "\t"
+    user_token_map: "embeddings/movies/Topk{topk}/user_token_map.json"
+    item_token_map: "embeddings/movies/Topk{topk}/item_token_map.json"
+  output:
+    csv: "embeddings/movies/Topk{topk}/test_set.csv"
+    info_json: "embeddings/movies/Topk{topk}/test_set_info.json"
+
+# Logging
+logging:
+  verbose: true
+  show_samples: 5

@@ -123,24 +123,6 @@ class CleanRewardsPDFGenerator:
                     min_round = rounds[np.argmin(round_rewards)]
                     max_round = rounds[np.argmax(round_rewards)]
                     
-                    # Position statistics in the bottom right corner
-                    stats_x, stats_y = 0.98, 0.02
-                    ha, va = 'right', 'bottom'
-                    
-                    stats_text = f"Statistics\n" + "─"*12 + "\n"
-                    stats_text += f"Avg: {avg_reward:.3f}\n"
-                    stats_text += f"Std: {std_reward:.3f}\n"
-                    stats_text += f"Min: {min_reward:.3f} (R{min_round})\n"
-                    stats_text += f"Max: {max_reward:.3f} (R{max_round})\n"
-                    stats_text += f"Range: {max_reward - min_reward:.3f}"
-                    
-                    axes[i].text(stats_x, stats_y, stats_text, 
-                               transform=axes[i].transAxes, 
-                               verticalalignment=va, horizontalalignment=ha,
-                               bbox=dict(boxstyle='round,pad=0.6', facecolor='white', 
-                                        edgecolor=colors[i], alpha=0.95, linewidth=1.5),
-                               fontsize=11, fontfamily='monospace')
-                    
                     # Highlight min and max points
                     axes[i].scatter([min_round], [min_reward], color='red', s=80, 
                                   zorder=5, edgecolor='white', linewidth=1.5, alpha=0.8)
@@ -205,31 +187,13 @@ class CleanRewardsPDFGenerator:
                 axes[i].grid(True, alpha=0.4, linestyle='-', linewidth=0.5)
                 axes[i].set_axisbelow(True)
                 
-                # Statistics positioning in bottom right corner
+                # Statistics for axis limits
                 avg_reward = np.mean(round_rewards)
                 std_reward = np.std(round_rewards)
                 min_reward = np.min(round_rewards)
                 max_reward = np.max(round_rewards)
                 min_round = rounds[np.argmin(round_rewards)]
                 max_round = rounds[np.argmax(round_rewards)]
-                
-                # Always position in bottom right corner
-                stats_x, stats_y = 0.98, 0.02
-                ha, va = 'right', 'bottom'
-                
-                stats_text = f"Statistics\n" + "─"*12 + "\n"
-                stats_text += f"Avg: {avg_reward:.3f}\n"
-                stats_text += f"Std: {std_reward:.3f}\n"
-                stats_text += f"Min: {min_reward:.3f} (R{min_round})\n"
-                stats_text += f"Max: {max_reward:.3f} (R{max_round})\n"
-                stats_text += f"Range: {max_reward - min_reward:.3f}"
-                
-                axes[i].text(stats_x, stats_y, stats_text, 
-                           transform=axes[i].transAxes, 
-                           verticalalignment=va, horizontalalignment=ha,
-                           bbox=dict(boxstyle='round,pad=0.6', facecolor='white', 
-                                    edgecolor=colors[i], alpha=0.95, linewidth=1.5),
-                           fontsize=11, fontfamily='monospace')
                 
                 axes[i].scatter([min_round], [min_reward], color='red', s=80, 
                               zorder=5, edgecolor='white', linewidth=1.5, alpha=0.8)

@@ -5,6 +5,7 @@ Generates a single-page PDF with optimized layout and statistics positioning.
 """
 
 import json
+import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -24,6 +25,9 @@ class SingleEntropyPDFGenerator:
         self.plots_dir = Path("plots")
         self.plots_dir.mkdir(exist_ok=True)
         
+        # Load config to get dataset and topk
+        self.load_config()
+        
         # Load cluster mapping
         self.load_cluster_mapping()
         
@@ -32,11 +36,22 @@ class SingleEntropyPDFGenerator:
         
         # Storage for analysis results
         self.episode_entropy_data = {}
+    
+    def load_config(self):
+        """Load configuration from config.yaml."""
+        with open("config.yaml", "r") as f:
+            config = yaml.safe_load(f)
+        
+        self.dataset = config['experiment_params']['dataset']
+        self.topk = config['experiment_params']['topk']
+        print(f"Using dataset: {self.dataset}, topk: {self.topk}")
         
     def load_cluster_mapping(self):
         """Load item to cluster mapping."""
         print("Loading cluster mapping...")
-        with open("embeddings/cluster_matrix_manifest_K5_topk5_balanced.json", "r") as f:
+        cluster_path = f"embeddings/{self.dataset}/Topk{self.topk}/cluster_matrix_manifest_K5_topk{self.topk}.json"
+        print(f"Loading from: {cluster_path}")
+        with open(cluster_path, "r") as f:
             cluster_data = json.load(f)
         
         # Create item to cluster mapping
@@ -173,28 +188,13 @@ class SingleEntropyPDFGenerator:
             max_entropy = np.max(entropies)
             min_episode = episodes[np.argmin(entropies)]
             max_episode = episodes[np.argmax(entropies)]
-            improvement = ((entropies[-1] - entropies[0]) / entropies[0] * 100)
             
-            # Position statistics in the middle-right area of the plot
-            stats_text = f"Statistics\n" + "="*20 + "\n"
-            stats_text += f"Average: {avg_entropy:.4f}\n"
-            stats_text += f"Std Dev: {std_entropy:.4f}\n"
-            stats_text += f"Range: {max_entropy - min_entropy:.4f}\n\n"
-            stats_text += f"Minimum: {min_entropy:.4f}\n"
-            stats_text += f"  (Episode {min_episode})\n\n"
-            stats_text += f"Maximum: {max_entropy:.4f}\n"
-            stats_text += f"  (Episode {max_episode})\n\n"
-            stats_text += f"Episode 1: {entropies[0]:.4f}\n"
-            stats_text += f"Episode 50: {entropies[-1]:.4f}\n\n"
-            stats_text += f"Improvement: {improvement:+.2f}%\n"
-            stats_text += f"Trend: {z[0]:.6f}x + {z[1]:.3f}"
-            
-            # Position the statistics box in the middle-right area
-            ax.text(0.65, 0.50, stats_text, transform=ax.transAxes, 
-                   verticalalignment='center', horizontalalignment='left',
-                   bbox=dict(boxstyle='round,pad=0.8', facecolor='white', 
-                            edgecolor='#2E86AB', alpha=0.95, linewidth=2),
-                   fontsize=12, fontfamily='monospace')
+            # Handle zero entropy case to avoid division by zero
+            if entropies[0] > 0:
+                improvement = ((entropies[-1] - entropies[0]) / entropies[0] * 100)
+            else:
+                # If starting entropy is 0, show absolute change instead
+                improvement = entropies[-1] * 100 if entropies[-1] > 0 else 0.0
             
             # Highlight first and last episodes with larger markers
             ax.scatter([episodes[0]], [entropies[0]], color='#27AE60', s=150, 
@@ -209,7 +209,7 @@ class SingleEntropyPDFGenerator:
                    label=f'Trend Line (slope: {z[0]:.6f})')
             
             # Customize legend
-            legend = ax.legend(fontsize=12, loc='upper left', frameon=True, 
+            legend = ax.legend(fontsize=12, loc='lower right', frameon=True, 
                              fancybox=True, shadow=True)
             legend.get_frame().set_facecolor('white')
             legend.get_frame().set_alpha(0.9)
@@ -258,12 +258,6 @@ class SingleEntropyPDFGenerator:
         
         ax.grid(True, alpha=0.4, linestyle='-', linewidth=0.5)
         ax.set_axisbelow(True)
-        
-        ax.text(0.65, 0.50, stats_text, transform=ax.transAxes, 
-               verticalalignment='center', horizontalalignment='left',
-               bbox=dict(boxstyle='round,pad=0.8', facecolor='white', 
-                        edgecolor='#2E86AB', alpha=0.95, linewidth=2),
-               fontsize=12, fontfamily='monospace')
         
         ax.scatter([episodes[0]], [entropies[0]], color='#27AE60', s=150, 
                   zorder=5, edgecolor='white', linewidth=2, 
@@ -325,7 +319,10 @@ def main():
         print(f"Episodes analyzed: {len(episodes)}")
         print(f"Entropy Episode 1: {first_entropy:.4f}")
         print(f"Entropy Episode 50: {last_entropy:.4f}")
-        print(f"Entropy improvement: {((last_entropy - first_entropy) / first_entropy * 100):+.2f}%")
+        if first_entropy > 0:
+            print(f"Entropy improvement: {((last_entropy - first_entropy) / first_entropy * 100):+.2f}%")
+        else:
+            print(f"Entropy improvement: N/A (starting entropy was 0)")
         print(f"Average entropy: {np.mean([generator.episode_entropy_data[ep]['avg_entropy'] for ep in episodes]):.4f}")
         print(f"Standard deviation: {np.std([generator.episode_entropy_data[ep]['avg_entropy'] for ep in episodes]):.4f}")
     

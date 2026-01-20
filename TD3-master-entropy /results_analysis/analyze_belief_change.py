@@ -13,7 +13,7 @@ OUTPUT_FILE = "belief_analysis_episodes_vs_initial.txt"
 
 # Load initial user beliefs (before training)
 print("Loading initial user beliefs...")
-with open("processed_data/user_average_beliefs.json", "r") as f:
+with open("processed_data/news/Topk5/user_average_beliefs.json", "r") as f:
     initial_data = json.load(f)
 
 # Extract initial beliefs
@@ -29,7 +29,7 @@ print(f"Loaded {len(user_ids)} users")
 
 # Load natural belief target
 try:
-    with open("processed_data/natural_belief_target.json", "r") as f:
+    with open("processed_data/news/Topk5/natural_belief_target.json", "r") as f:
         target_data = json.load(f)
     natural_target = np.array(target_data['natural_belief_target'])
     has_target = True
@@ -43,7 +43,7 @@ print("\nProcessing episodes 1-20...")
 results_dir = Path("results")
 episode_results = {}
 
-for ep in range(1, 21):
+for ep in range(1, 51):
     ep_file = results_dir / f"user_beliefs_episode_{ep}.json"
     if ep_file.exists():
         with open(ep_file, "r") as f:
@@ -100,14 +100,14 @@ with open(OUTPUT_FILE, 'w') as f:
     f.write("INITIAL AVERAGE BELIEFS (Baseline)\n")
     f.write("-"*100 + "\n")
     for i in range(len(avg_initial)):
-        f.write(f"  Cluster {i}: {avg_initial[i]:.6f}\n")
+        f.write(f"  Cluster {i}: {avg_initial[i]:.17f}\n")
     
     if has_target:
         f.write("\n" + "-"*100 + "\n")
         f.write("NATURAL BELIEF TARGET\n")
         f.write("-"*100 + "\n")
         for i in range(len(natural_target)):
-            f.write(f"  Cluster {i}: {natural_target[i]:.6f}\n")
+            f.write(f"  Cluster {i}: {natural_target[i]:.17f}\n")
     
     # Write simplified results for each episode
     for ep in sorted(episode_results.keys()):
@@ -117,8 +117,8 @@ with open(OUTPUT_FILE, 'w') as f:
         f.write(f"EPISODE {ep} vs INITIAL\n")
         f.write("="*100 + "\n")
         
-        f.write(f"{'Cluster':<10} {'Initial':<15} {'Episode '+str(ep):<15} {'Change':<15} {'% Change':<15}\n")
-        f.write("-"*100 + "\n")
+        f.write(f"{'Cluster':<10} {'Initial':<25} {'Episode '+str(ep):<25} {'Change':<25} {'% Change':<15}\n")
+        f.write("-"*120 + "\n")
         
         for i in range(len(avg_initial)):
             if avg_initial[i] == 0:
@@ -126,15 +126,15 @@ with open(OUTPUT_FILE, 'w') as f:
             else:
                 pct_str = f"{data['percent_change'][i]:.2f}%"
             
-            f.write(f"Cluster {i:<3} {avg_initial[i]:<15.6f} {data['avg_beliefs'][i]:<15.6f} "
-                  f"{data['belief_change'][i]:<15.6f} {pct_str:<15}\n")
+            f.write(f"Cluster {i:<3} {avg_initial[i]:<25.17f} {data['avg_beliefs'][i]:<25.17f} "
+                  f"{data['belief_change'][i]:<+25.17f} {pct_str:<15}\n")
         
-        f.write("-"*100 + "\n")
-        f.write(f"{'TOTAL':<10} {np.sum(avg_initial):<15.6f} {np.sum(data['avg_beliefs']):<15.6f} "
-              f"{np.sum(data['belief_change']):<15.6f}\n")
+        f.write("-"*120 + "\n")
+        f.write(f"{'TOTAL':<10} {np.sum(avg_initial):<25.17f} {np.sum(data['avg_beliefs']):<25.17f} "
+              f"{np.sum(data['belief_change']):<+25.17f}\n")
         
         if has_target:
-            f.write(f"Average distance from target: {data['distance_from_target']:.6f}\n")
+            f.write(f"Average distance from target: {data['distance_from_target']:.17f}\n")
     
     # Summary: Distance from target progression
     if has_target:
@@ -143,47 +143,52 @@ with open(OUTPUT_FILE, 'w') as f:
         f.write("="*100 + "\n")
         for ep in sorted(episode_results.keys()):
             dist = episode_results[ep]['distance_from_target']
-            f.write(f"Episode {ep:>2}: {dist:.6f}\n")
+            f.write(f"Episode {ep:>2}: {dist:.17f}\n")
     
     # Summary: Cluster-wise progression
-    f.write("\n" + "="*100 + "\n")
+    f.write("\n" + "="*120 + "\n")
     f.write("SUMMARY: CLUSTER-WISE BELIEF PROGRESSION\n")
-    f.write("="*100 + "\n")
+    f.write("="*120 + "\n")
     
     # Header
     f.write(f"{'Cluster':<10}")
-    f.write(f"{'Initial':<12}")
+    f.write(f"{'Initial':<22}")
     for ep in sorted(episode_results.keys()):
-        f.write(f"{'Ep'+str(ep):<12}")
+        f.write(f"{'Ep'+str(ep):<22}")
     if has_target:
-        f.write(f"{'Target':<12}")
+        f.write(f"{'Target':<22}")
     f.write("\n")
-    f.write("-"*100 + "\n")
+    f.write("-"*120 + "\n")
     
     # Data rows
     for i in range(len(avg_initial)):
         f.write(f"Cluster {i:<3}")
-        f.write(f"{avg_initial[i]:<12.6f}")
+        f.write(f"{avg_initial[i]:<22.17f}")
         for ep in sorted(episode_results.keys()):
-            f.write(f"{episode_results[ep]['avg_beliefs'][i]:<12.6f}")
+            f.write(f"{episode_results[ep]['avg_beliefs'][i]:<22.17f}")
         if has_target:
-            f.write(f"{natural_target[i]:<12.6f}")
+            f.write(f"{natural_target[i]:<22.17f}")
         f.write("\n")
     
     # Total row
-    f.write("-"*100 + "\n")
+    f.write("-"*120 + "\n")
     f.write(f"{'TOTAL':<10}")
-    f.write(f"{np.sum(avg_initial):<12.6f}")
+    f.write(f"{np.sum(avg_initial):<22.17f}")
     for ep in sorted(episode_results.keys()):
-        f.write(f"{np.sum(episode_results[ep]['avg_beliefs']):<12.6f}")
+        f.write(f"{np.sum(episode_results[ep]['avg_beliefs']):<22.17f}")
     if has_target:
-        f.write(f"{np.sum(natural_target):<12.6f}")
+        f.write(f"{np.sum(natural_target):<22.17f}")
     f.write("\n")
     
-    f.write("\n" + "="*100 + "\n")
+    f.write("\n" + "="*120 + "\n")
 
 print(f"Results saved to {OUTPUT_FILE}")
 print(f"\nSummary:")
 print(f"  - Analyzed {len(episode_results)} episodes")
 print(f"  - Each episode compared with initial beliefs")
-print(f"  - Distance from target: Episode 1 = {episode_results[1]['distance_from_target']:.6f}, Episode 20 = {episode_results[20]['distance_from_target']:.6f}")
+if has_target and episode_results:
+    first_ep = min(episode_results.keys())
+    last_ep = max(episode_results.keys())
+    print(f"  - Distance from target: Episode {first_ep} = {episode_results[first_ep]['distance_from_target']:.17f}, Episode {last_ep} = {episode_results[last_ep]['distance_from_target']:.17f}")
+else:
+    print("  - Distance from target: N/A (natural belief target not found)")

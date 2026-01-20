@@ -579,39 +579,3 @@ But Learning: How to provide optimal recommendations for stable preferences
 5. **Modular Design**: Easy to extend and modify components
 
 This design is particularly well-suited for studying recommendation algorithm optimization in stable user populations, making it ideal for research and development of recommendation system core algorithms.
-
-
-Episode 1:
-  ┌─────────────────────────────────────────┐
-  │ reset_episode()                         │
-  │ - U100: beliefs = [0.000, 0.000, ...]  │ ← 重置到初始值
-  │ - U1000: beliefs = [0.000, 0.000, ...] │
-  └─────────────────────────────────────────┘
-  
-  Round 1:
-    U100:  [0.000, ...] → action → [0.031, ...] ✅
-    U1000: [0.000, ...] → action → [0.032, ...] ✅
-  
-  next_round() ← 只增加计数，不重置beliefs
-  
-  Round 2:
-    U100:  [0.031, ...] → action → [0.062, ...] ✅ 连续！
-    U1000: [0.032, ...] → action → [0.064, ...] ✅ 连续！
-  
-  Round 3:
-    U100:  [0.062, ...] → action → [0.093, ...] ✅ 连续！
-    ...
-  
-  Round 50:
-    U100:  [...] → action → [0.650, ...] ✅
-
-Episode 2:
-  ┌─────────────────────────────────────────┐
-  │ reset_episode()                         │
-  │ - U100: beliefs = [0.000, 0.000, ...]  │ ← 重新开始
-  │ - U1000: beliefs = [0.000, 0.000, ...] │
-  └─────────────────────────────────────────┘
-  
-  Round 1:
-    U100:  [0.000, ...] → action → [0.031, ...] ✅ 从头开始
-    ...

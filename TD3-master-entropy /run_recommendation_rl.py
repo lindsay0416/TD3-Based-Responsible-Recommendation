@@ -31,6 +31,46 @@ def load_config(config_path: str) -> dict:
         sys.exit(1)
 
 
+def resolve_data_paths(config: dict) -> dict:
+    """
+    Resolve template placeholders in data_paths using experiment_params.
+    Replaces {topk}, {rs_model}, {dataset} with actual values.
+    """
+    if 'experiment_params' not in config:
+        print("Warning: No experiment_params found, using data_paths as-is")
+        return config
+    
+    params = config['experiment_params']
+    topk = str(params.get('topk', 5))
+    rs_model = params.get('rs_model', 'LightGCN')
+    dataset = params.get('dataset', 'news')
+    
+    print(f"\n{'='*60}")
+    print("EXPERIMENT CONFIGURATION")
+    print(f"{'='*60}")
+    print(f"  Dataset: {dataset}")
+    print(f"  TopK: {topk}")
+    print(f"  RS Model: {rs_model}")
+    print(f"{'='*60}")
+    
+    # Resolve all paths in data_paths
+    if 'data_paths' in config:
+        resolved_paths = {}
+        for key, path_template in config['data_paths'].items():
+            if isinstance(path_template, str):
+                resolved_path = path_template.format(
+                    topk=topk,
+                    rs_model=rs_model,
+                    dataset=dataset
+                )
+                resolved_paths[key] = resolved_path
+            else:
+                resolved_paths[key] = path_template
+        config['data_paths'] = resolved_paths
+    
+    return config
+
+
 def validate_config(config: dict) -> bool:
     """Validate configuration parameters."""
     required_sections = ['training', 'td3', 'environment', 'data_paths']
@@ -139,6 +179,9 @@ Examples:
     
     # Load configuration
     config = load_config(args.config)
+    
+    # Resolve template paths from experiment_params
+    config = resolve_data_paths(config)
     
     # Override verbose setting if specified
     if args.verbose:
