@@ -8,44 +8,32 @@
 # 4. Standard TD3 hyperparameters for stable learning
 # ============================================================================
 
+# ============================================================================
+# EXPERIMENT PARAMETERS - Change these to switch datasets
+# ============================================================================
+experiment_params:
+  topk: 5                       # Graph clustering parameter: 5 or 15
+  rs_model: "ENMF"          # Recommendation system: LightGCN, NCL, NGCF, SGL, ENMF, (DGCF)
+  dataset: "news"               # Dataset name: news, movies, books
+
 # Training Parameters
 training:
-  episodes: 1                  # Total number of training episodes
-  rounds_per_episode: 2        # Rounds per episode (optimized for belief convergence)
-                                # - With 50 rounds, users get ~750 accepted items per episode
-                                # - Sufficient to reach natural belief targets
+  episodes: 50                  # Total number of training episodes
+  rounds_per_episode: 50        # Rounds per episode (optimized for belief convergence)
   users_per_round: 50000        # Number of users to train per round
   batch_size: 1000              # Batch size for GPU-accelerated processing
-  warmup_transitions: 100000     # Transitions before TD3 training starts
-                                # - Fills replay buffer with diverse experiences
-                                # - Completes in ~1 round (optimized)
+  warmup_transitions: 100000    # Transitions before TD3 training starts
   train_frequency: 1            # Train TD3 every N rounds
-                                # - Train every round for better data utilization
-                                # - ~50 training steps per episode (optimized from 16)
 
 # RL Algorithm Parameters (TD3)
 td3:
   discount: 0.95                # Discount factor (γ) for future rewards
-                                # - 0.95 is standard for episodic tasks
-                                # - Balances immediate and long-term rewards
   tau: 0.005                    # Soft target network update rate
-                                # - Standard value for stable learning
-                                # - Gradual target network updates
   policy_noise: 0.2             # Noise added to target policy during critic update
-                                # - Smooths value estimates
-                                # - Prevents overfitting to deterministic policy
   noise_clip: 0.5               # Range to clip target policy noise
-                                # - Prevents excessive noise
-                                # - Maintains policy stability
   policy_freq: 2                # Delayed policy update frequency
-                                # - Update actor every 2 critic updates
-                                # - Core TD3 feature for stability
   batch_size: 128               # Training batch size
-                                # - Standard for TD3
-                                # - Good balance of sample efficiency and stability
   learning_rate: 3e-4           # Learning rate for both actor and critic
-                                # - Standard Adam learning rate
-                                # - Works well for most RL tasks
 
 # Environment Parameters
 environment:
@@ -65,7 +53,7 @@ environment:
   baseline_acceptance_rate: 0.1 # Minimum acceptance probability (10%)
                                 # - Ensures exploration even for low-belief clusters
                                 # - Prevents complete rejection of unfamiliar content
-  max_cluster_distance: 5       # Maximum item-to-cluster distance
+  max_cluster_distance: 4       # Maximum item-to-cluster distance
                                 # - From empirical data analysis
                                 # - Used for distance normalization
   
@@ -78,105 +66,66 @@ environment:
 
 # Recommendation Parameters
 recommendation:
-  rl_list_size: 60              # Number of RL-generated recommendations
-                                # - Increased from 10 for more learning opportunities
-                                # - Provides sufficient signal for belief updates
-  total_recommendations: 25     # Total recommendations (RL + pre-trained)
-                                # - RL: 15 items, Pre-trained: 10 items
-                                # - Balances exploration and exploitation
-  similarity_metric: "cosine"   # Similarity metric for item matching
-                                # - Standard for embedding-based recommendations
+  rl_list_size: 60
+  total_recommendations: 100
+  similarity_metric: "cosine"
 
 # Reward Parameters (Step-based System)
 reward:
-  step_based: true              # Use step-based reward calculation (recommended)
-                                # - Provides immediate feedback for each action
-                                # - Enables faster learning than episode-based rewards
-  
-  termination_threshold: 0.25   # Average distance threshold for termination bonus
+  step_based: true
+  termination_threshold: 0.15   # Average distance threshold for termination bonus
+                                # - Initial avg_distance is ~0.20, so threshold must be lower
                                 # - Triggers when user beliefs are close to natural target
-                                # - Encourages convergence to optimal beliefs
-                                # - Relaxed from 0.18 to 0.25 for easier achievement
-  termination_reward: 5.0       # Bonus reward for reaching termination threshold
-                                # - Strong signal for achieving goal
-                                # - Typically earned in later rounds of episode
-  
-  max_cluster_distance: 1.0     # Maximum possible distance per cluster
-                                # - Used for reward normalization
-                                # - Theoretical maximum (0 to 1 belief range)
-  
-  use_gpu_rewards: true         # Use GPU acceleration for reward calculations
-                                # - Significantly faster for batch processing
-                                # - Recommended for large-scale training
-  
-  entropy_reward_weight: 1.0    # Weight for entropy-based diversity reward (increased to fix Cluster 3 issue)
-                                # - Encourages uniform distribution across 5 clusters
-                                # - Range: 0.0 (disabled) to 10.0 (strong emphasis)
-                                # - 1.0 provides balanced diversity incentive
-                                # - Max entropy reward: 1.0 (perfect uniform distribution)
-  
-  # Legacy/Compatibility Parameters
-  improvement_threshold: 0.01   # Minimum improvement for reward (legacy)
-  store_individual_rewards: false   # Memory optimization
-  aggregate_rewards: true           # Use aggregated rewards
-  reward_aggregation_window: 50     # Aggregation window size
+  termination_reward: 5.0
+  max_cluster_distance: 1.0
+  use_gpu_rewards: true
+  entropy_reward_weight: 1.0
+  improvement_threshold: 0.01
+  store_individual_rewards: false
+  aggregate_rewards: true
+  reward_aggregation_window: 50
 
-# Belief Update Parameters (Adaptive Learning)
-# Note: These are implemented in recommendation_environment.py
-# - Fast learning (0.02) when distance > 0.3
-# - Medium learning (0.015) when 0.1 < distance < 0.3
-# - Slow learning (0.01) when distance < 0.1
-# This adaptive approach ensures:
-# - Quick initial progress toward targets
-# - Stable convergence near targets
-# - All clusters reach natural belief targets within 50 rounds
-
-# Data Paths
+# ============================================================================
+# DATA PATHS - Template-based paths (auto-resolved from experiment_params)
+# ============================================================================
+# Use {topk}, {rs_model}, {dataset} placeholders - they will be replaced automatically
+# ============================================================================
 data_paths:
-  user_beliefs: "processed_data/user_average_beliefs.json"
-  user_embeddings: "embeddings/user_embedding.pkl"
-  item_embeddings: "embeddings/item_embedding.pkl"
-  cluster_embeddings: "processed_data/cluster_embeddings.pkl"
-  natural_beliefs: "processed_data/natural_belief_target.json" 
-  recommendations: "embeddings/recommendations.pkl"
-  item_token_map: "embeddings/item_token_map.json"
-  user_token_map: "embeddings/user_token_map.json"
-  cluster_assignments: "embeddings/cluster_matrix_manifest_K5_topk5.json"  
+  # ----- RS Model Specific Files (require topk + rs_model) -----
+  item_embeddings: "embeddings/{dataset}/Topk{topk}/{rs_model}/item_embedding.pkl"
+  user_embeddings: "embeddings/{dataset}/Topk{topk}/{rs_model}/user_embedding.pkl"
+  recommendations: "embeddings/{dataset}/Topk{topk}/{rs_model}/recommendations.pkl"
+  
+  # ----- Topk Shared Files (require topk only) -----
+  item_token_map: "embeddings/{dataset}/Topk{topk}/item_token_map.json"
+  user_token_map: "embeddings/{dataset}/Topk{topk}/user_token_map.json"
+  cluster_assignments: "embeddings/{dataset}/Topk{topk}/cluster_matrix_manifest_K5_topk{topk}.json"
+  graph_with_clusters: "embeddings/{dataset}/Topk{topk}/graph_with_clusters_K5_topk{topk}.pkl"
+  cluster_centers: "embeddings/{dataset}/Topk{topk}/cluster_centers_K5_topk{topk}.json"
+  cluster_distances: "embeddings/{dataset}/Topk{topk}/cluster_distances_K5_topk{topk}.pt"
+  test_set: "embeddings/{dataset}/Topk{topk}/test_set.csv"
+  test_set_info: "embeddings/{dataset}/Topk{topk}/test_set_info.json"
+  
+  # ----- Processed Data (require topk only) -----
+  cluster_embeddings: "processed_data/{dataset}/Topk{topk}/cluster_embeddings.pkl"
+  natural_beliefs: "processed_data/{dataset}/Topk{topk}/natural_belief_target.json"
+  user_beliefs: "processed_data/{dataset}/Topk{topk}/user_average_beliefs.json"
 
 # Logging and Saving
 logging:
-  save_frequency: 1000          # Save model checkpoint every N episodes
-  log_frequency: 100            # Log training progress every N episodes
-  results_dir: "results"        # Directory for training results and statistics
-  models_dir: "models"          # Directory for saved model checkpoints
+  save_frequency: 1000
+  log_frequency: 100
+  results_dir: "results"
+  models_dir: "models"
 
 # Experiment Settings
 experiment:
-  seed: 42                      # Random seed for reproducibility
-  device: "auto"                # Device selection: "cuda", "cpu", or "auto"
-                                # - "auto" automatically selects GPU if available
-  num_workers: 1                # Number of parallel workers (future feature)
+  seed: 42
+  device: "auto"
+  num_workers: 1
 
 # Debug Settings
 debug:
-  verbose: true                 # Print detailed training logs
-  save_transitions: false       # Save individual transitions (memory intensive)
-  validate_data: true           # Validate data integrity before training
-
-# ============================================================================
-# Expected Training Dynamics
-# ============================================================================
-# With these settings, each episode should show:
-# - Round 1: Reach termination threshold (avg distance < 0.18)
-# - Round 10-20: Near-perfect belief alignment (distance < 0.002)
-# - Round 50: Complete convergence to natural belief targets
-#
-# Acceptance rates (sigmoid-based):
-# - Initial beliefs (~0.001): ~60% acceptance
-# - Target beliefs (~0.7): ~60% acceptance
-# - Provides consistent learning signal throughout training
-#
-# Total accepted items per episode:
-# - 50 rounds × 25 recommendations × 0.6 acceptance ≈ 750 items
-# - Sufficient for all clusters to reach natural targets
-# ============================================================================
+  verbose: true
+  save_transitions: false
+  validate_data: true

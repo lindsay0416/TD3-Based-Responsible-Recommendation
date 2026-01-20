@@ -34,6 +34,9 @@ class RecommendationTrainer:
         with open(config_path, 'r') as f:
             self.config = yaml.safe_load(f)
         
+        # Resolve template paths from experiment_params
+        self.config = self._resolve_data_paths(self.config)
+        
         # Set random seeds
         self._set_seeds()
         
@@ -75,6 +78,37 @@ class RecommendationTrainer:
         print(f"Training for {self.config['training']['episodes']} episodes")
         print(f"Rounds per episode: {self.config['training']['rounds_per_episode']}")
         print(f"Users per round: {len(self.user_list)} (limited from config)")
+    
+    def _resolve_data_paths(self, config: dict) -> dict:
+        """
+        Resolve template placeholders in data_paths using experiment_params.
+        Replaces {topk}, {rs_model}, {dataset} with actual values.
+        """
+        if 'experiment_params' not in config:
+            return config
+        
+        params = config['experiment_params']
+        topk = str(params.get('topk', 5))
+        rs_model = params.get('rs_model', 'LightGCN')
+        dataset = params.get('dataset', 'news')
+        
+        print(f"\nExperiment: dataset={dataset}, topk={topk}, rs_model={rs_model}")
+        
+        if 'data_paths' in config:
+            resolved_paths = {}
+            for key, path_template in config['data_paths'].items():
+                if isinstance(path_template, str):
+                    resolved_path = path_template.format(
+                        topk=topk,
+                        rs_model=rs_model,
+                        dataset=dataset
+                    )
+                    resolved_paths[key] = resolved_path
+                else:
+                    resolved_paths[key] = path_template
+            config['data_paths'] = resolved_paths
+        
+        return config
     
     def _set_seeds(self):
         """Set random seeds for reproducibility."""

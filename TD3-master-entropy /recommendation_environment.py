@@ -301,18 +301,23 @@ class RecommendationEnvironment:
     
     def calculate_entropy_reward(self, recommended_items: List[str]) -> float:
         """
-        Calculate entropy reward based on cluster distribution of recommended items
+        Calculate entropy reward based on cluster distribution of recommended items.
+        
+        Uses all num_clusters (5) in probability calculation to encourage coverage
+        of ALL clusters. This means:
+        - 5 clusters uniformly distributed: max entropy = log(5) ≈ 1.609
+        - 2 clusters uniformly distributed: entropy = log(2) ≈ 0.693 (penalized)
         
         Args:
             recommended_items: List of recommended item IDs
             
         Returns:
-            entropy_reward: Reward based on normalized entropy (between 0 and entropy_reward_weight)
+            entropy_reward: Reward based on entropy (encourages all 5 clusters coverage)
         """
         if not recommended_items or not hasattr(self, 'item_to_cluster') or self.item_to_cluster is None:
             return 0.0
         
-        
+        # Map items to their clusters
         cluster_ids = []
         for item_id in recommended_items:
             item_id_str = str(item_id)
@@ -329,12 +334,17 @@ class RecommendationEnvironment:
         if not cluster_ids:
             return 0.0
         
+        # Count items per cluster
         cluster_counts = Counter(cluster_ids)
-        total = len(cluster_ids)
+        total_items = len(cluster_ids)  # Actual number of items with valid cluster assignments
         
-        probabilities = np.array([cluster_counts.get(i, 0) / total for i in range(self.num_clusters)])
+        # Calculate probabilities for ALL clusters (including those with 0 items)
+        # This encourages coverage of all 5 clusters
+        probabilities = np.array([cluster_counts.get(i, 0) / total_items for i in range(self.num_clusters)])
         
         # Calculate entropy: H(X) = -Σ p(x) log(p(x))
+        # Note: 0 * log(0) = 0, so missing clusters don't add to entropy
+        # but they also don't reach the maximum possible entropy of log(5)
         entropy = 0.0
         for p in probabilities:
             if p > 0:
@@ -482,6 +492,7 @@ class RecommendationEnvironment:
         """
         Update user beliefs after a single step and calculate reward.
         Uses count-based distribution: belief[i] = count[i] / total_count
+        Only counts UNIQUE items - duplicates are skipped.
         
         Args:
             user_id: User identifier
@@ -496,47 +507,41 @@ class RecommendationEnvironment:
             # No accepted items, no belief update, no reward
             return self.users[user_id]['beliefs'].copy(), 0.0
         
-        # Update counts for each accepted item
+        # Direct reference to user's data (avoid repeated dict lookups)
+        user_counts = self.user_accepted_counts[user_id]
+        user_accepted_set = user_counts['accepted_items']
+        cluster_counts = user_counts['cluster_counts']
+        
+        # Cache lookups for hot path
+        item_to_cluster = self.item_to_cluster
+        item_id_normalized = getattr(self, 'item_id_normalized', None)
+        
+        # Update counts for each accepted item (only if not already accepted)
         for item_id in accepted_items:
-            # Get item's cluster assignment
-            if hasattr(self, 'item_to_cluster') and self.item_to_cluster:
-                # Normalize item ID for lookup
-                item_cluster = None
-                item_id_str = str(item_id)
-                
-                # Try different formats to find the item
-                if hasattr(self, 'item_id_normalized') and self.item_id_normalized:
-                    normalized_id = self.item_id_normalized.get(item_id_str, item_id_str)
-                    item_cluster = self.item_to_cluster.get(normalized_id, None)
-                else:
-                    # Fallback to manual format checking
-                    item_cluster = self.item_to_cluster.get(item_id_str, None)
-                    if item_cluster is None and not item_id_str.startswith('N'):
-                        item_with_n = f"N{item_id_str}"
-                        item_cluster = self.item_to_cluster.get(item_with_n, None)
-                    if item_cluster is None and item_id_str.startswith('N'):
-                        item_without_n = item_id_str[1:]
-                        item_cluster = self.item_to_cluster.get(item_without_n, None)
-                
-                if item_cluster is not None and 0 <= item_cluster < 5:
-                    # Increment count for this cluster
-                    self.user_accepted_counts[user_id]['cluster_counts'][item_cluster] += 1
-        
-        # Calculate new beliefs: belief[i] = cluster_accepted_count[i] / total_items_in_dataset
-        # This represents the absolute coverage of items in the dataset
-        # Sum of beliefs ≤ 1.0 (equals 1.0 only if user accepted all items in dataset)
-        counts = self.user_accepted_counts[user_id]['cluster_counts']
-        
-        if hasattr(self, 'total_items_in_dataset'):
-            # Correct formula: belief[i] = accepted_count[i] / total_items_in_dataset
-            new_beliefs = counts / self.total_items_in_dataset
-        else:
-            # Fallback to old method if total_items_in_dataset not loaded
-            total = self.user_accepted_counts[user_id]['total_count']
-            if total > 0:
-                new_beliefs = counts / total
+            item_id_str = str(item_id)
+            
+            # Skip if this item was already accepted before (O(1) set lookup)
+            if item_id_str in user_accepted_set:
+                continue
+            
+            # Fast cluster lookup
+            if item_id_normalized:
+                normalized_id = item_id_normalized.get(item_id_str, item_id_str)
+                item_cluster = item_to_cluster.get(normalized_id)
             else:
-                new_beliefs = np.zeros(5, dtype=np.float32)
+                item_cluster = item_to_cluster.get(item_id_str)
+                if item_cluster is None:
+                    # Try with/without N prefix
+                    alt_id = f"N{item_id_str}" if not item_id_str.startswith('N') else item_id_str[1:]
+                    item_cluster = item_to_cluster.get(alt_id)
+            
+            if item_cluster is not None and 0 <= item_cluster < 5:
+                cluster_counts[item_cluster] += 1
+                user_accepted_set.add(item_id_str)
+        
+        # Calculate new beliefs: belief[i] = accepted_in_cluster[i] / total_items_in_dataset
+        # Same denominator as target, so distance shows real gap in coverage
+        new_beliefs = cluster_counts / self.total_items_in_dataset
         
         # Update user beliefs in CPU storage
         self.users[user_id]['beliefs'] = new_beliefs
@@ -577,29 +582,41 @@ class RecommendationEnvironment:
         # Convert to GPU tensor
         current_beliefs_tensor = torch.FloatTensor(current_beliefs_list).to(self.device)  # [batch_size, 5]
         
-        # Calculate belief updates for each user (vectorized where possible)
+        # Cache lookups for hot path
+        item_to_cluster = self.item_to_cluster
+        item_id_normalized = self.item_id_normalized
+        natural_target = self.natural_belief_target
+        user_accepted_counts = self.user_accepted_counts
+        
+        # Calculate belief updates for each user
         belief_updates_list = []
         
         for i, (user_id, accepted_items) in enumerate(zip(user_ids, accepted_items_batch)):
             if not accepted_items:
-                # No updates for this user
                 belief_updates_list.append(np.zeros(5, dtype=np.float32))
                 continue
             
-            # Vectorized cluster lookup
+            # Direct reference (avoid repeated dict lookups)
+            user_counts = user_accepted_counts[user_id]
+            user_accepted_set = user_counts['accepted_items']
+            
             belief_update = np.zeros(5, dtype=np.float32)
             current_belief = current_beliefs_list[i]
             
-            # Batch process accepted items
+            # Process accepted items (only unique ones)
             for item_id in accepted_items:
-                # Fast normalized lookup
                 item_id_str = str(item_id)
-                normalized_id = self.item_id_normalized.get(item_id_str, item_id_str)
-                item_cluster = self.item_to_cluster.get(normalized_id, None)
+                
+                # O(1) set lookup
+                if item_id_str in user_accepted_set:
+                    continue
+                
+                normalized_id = item_id_normalized.get(item_id_str, item_id_str)
+                item_cluster = item_to_cluster.get(normalized_id)
                 
                 if item_cluster is not None and 0 <= item_cluster < 5:
                     # Adaptive learning rate based on distance to target
-                    distance_to_target = max(0, self.natural_belief_target[item_cluster] - current_belief[item_cluster])
+                    distance_to_target = max(0, natural_target[item_cluster] - current_belief[item_cluster])
                     
                     if distance_to_target > 0.3:
                         increment = 0.02
@@ -609,6 +626,7 @@ class RecommendationEnvironment:
                         increment = 0.01
                     
                     belief_update[item_cluster] += increment
+                    user_accepted_set.add(item_id_str)
             
             belief_updates_list.append(belief_update)
         
@@ -682,13 +700,21 @@ class RecommendationEnvironment:
         try:
             import torch
             
-            # Load cluster distances
-            self.cluster_distances = torch.load('embeddings/cluster_distances_K5_topk5.pt')
+            # Load cluster distances from config path
+            cluster_distances_path = self.config['data_paths'].get(
+                'cluster_distances', 
+                'embeddings/cluster_distances_K5_topk5.pt'
+            )
+            self.cluster_distances = torch.load(cluster_distances_path)
             print(f"Loaded cluster distances: {self.cluster_distances.shape}")
             
             # Load cluster centers (optional, for reference)
             try:
-                with open('embeddings/cluster_centers_K5_topk5.json', 'r') as f:
+                cluster_centers_path = self.config['data_paths'].get(
+                    'cluster_centers',
+                    'embeddings/cluster_centers_K5_topk5.json'
+                )
+                with open(cluster_centers_path, 'r') as f:
                     self.cluster_centers = json.load(f)
                 print(f"Loaded cluster centers for {len(self.cluster_centers)} clusters")
             except FileNotFoundError:
@@ -789,6 +815,7 @@ class RecommendationEnvironment:
             
             self.user_accepted_counts[user_id] = {
                 'cluster_counts': initial_counts.copy(),
+                'accepted_items': set(),  # Track unique accepted items
             }
             self.initial_user_counts[user_id] = {
                 'cluster_counts': initial_counts.copy(),
@@ -1808,6 +1835,8 @@ class RecommendationEnvironment:
                 # Reset counts to initial values (based on initial beliefs)
                 if user_id in self.initial_user_counts:
                     self.user_accepted_counts[user_id]['cluster_counts'] = self.initial_user_counts[user_id]['cluster_counts'].copy()
+                    # Clear the accepted items set for new episode
+                    self.user_accepted_counts[user_id]['accepted_items'] = set()
                 
                 # Calculate simple distance to natural target
                 initial_beliefs = self.initial_user_beliefs[user_id]
