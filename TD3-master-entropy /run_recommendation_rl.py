@@ -34,7 +34,7 @@ def load_config(config_path: str) -> dict:
 def resolve_data_paths(config: dict) -> dict:
     """
     Resolve template placeholders in data_paths using experiment_params.
-    Replaces {topk}, {rs_model}, {dataset} with actual values.
+    Replaces {topk}, {rs_model}, {dataset} with actual values. 
     """
     if 'experiment_params' not in config:
         print("Warning: No experiment_params found, using data_paths as-is")

@@ -16,11 +16,11 @@ paths:
 # ============================================
 natural_target:
   input:
-    cluster_manifest: "embeddings/books/cluster_matrix_manifest_K5_topk{topk}.json"
+    cluster_manifest: "embeddings/books/K_means/cluster_matrix_manifest_K5.json"
   output:
-    json: "processed_data/books/Topk{topk}/natural_belief_target.json"
-    pkl: "processed_data/books/Topk{topk}/natural_belief_target.pkl"
-    utilities: "processed_data/books/Topk{topk}/filter_bubble_utilities.py"
+    json: "processed_data/books/K_means/natural_belief_target.json"
+    pkl: "processed_data/books/K_means/natural_belief_target.pkl"
+    utilities: "processed_data/books/K_means/filter_bubble_utilities.py"
   options:
     expected_clusters: 5
     generate_utilities: true
@@ -33,11 +33,11 @@ user_beliefs:
   input:
     behaviors_file: "data/books/new_behaviors.tsv"
     separator: "\t"
-    cluster_manifest: "embeddings/books/cluster_matrix_manifest_K5_topk{topk}.json"
-    natural_belief_target: "processed_data/books/Topk{topk}/natural_belief_target.json"
+    cluster_manifest: "embeddings/books/K_means/cluster_matrix_manifest_K5.json"
+    natural_belief_target: "processed_data/books/K_means/natural_belief_target.json"
   output:
-    json: "processed_data/books/Topk{topk}/user_average_beliefs.json"
-    pkl: "processed_data/books/Topk{topk}/user_average_beliefs.pkl"
+    json: "processed_data/books/K_means/user_average_beliefs.json"
+    pkl: "processed_data/books/K_means/user_average_beliefs.pkl"
   options:
     expected_clusters: 5
 
@@ -85,11 +85,11 @@ test_set:
   input:
     behaviors_file: "data/books/new_behaviors.tsv"
     separator: "\t"
-    user_token_map: "embeddings/books/Topk{topk}/user_token_map.json"
-    item_token_map: "embeddings/books/Topk{topk}/item_token_map.json"
+    user_token_map: "embeddings/books/K_means/user_token_map.json"
+    item_token_map: "embeddings/books/K_means/item_token_map.json"
   output:
-    csv: "embeddings/books/Topk{topk}/test_set.csv"
-    info_json: "embeddings/books/Topk{topk}/test_set_info.json"
+    csv: "embeddings/books/K_means/test_set.csv"
+    info_json: "embeddings/books/K_means/test_set_info.json"
 
 # Logging
 logging:

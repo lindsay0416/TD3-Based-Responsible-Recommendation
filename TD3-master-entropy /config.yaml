@@ -12,9 +12,9 @@
 # EXPERIMENT PARAMETERS - Change these to switch datasets
 # ============================================================================
 experiment_params:
-  topk: 5                       # Graph clustering parameter: 5 or 15
-  rs_model: "ENMF"          # Recommendation system: LightGCN, NCL, NGCF, SGL, ENMF, (DGCF)
-  dataset: "news"               # Dataset name: news, movies, books
+  topk: 5
+  rs_model: "LightGCN"
+  dataset: "books"
 
 # Training Parameters
 training:
@@ -91,25 +91,20 @@ reward:
 # Use {topk}, {rs_model}, {dataset} placeholders - they will be replaced automatically
 # ============================================================================
 data_paths:
-  # ----- RS Model Specific Files (require topk + rs_model) -----
-  item_embeddings: "embeddings/{dataset}/Topk{topk}/{rs_model}/item_embedding.pkl"
-  user_embeddings: "embeddings/{dataset}/Topk{topk}/{rs_model}/user_embedding.pkl"
-  recommendations: "embeddings/{dataset}/Topk{topk}/{rs_model}/recommendations.pkl"
-  
-  # ----- Topk Shared Files (require topk only) -----
-  item_token_map: "embeddings/{dataset}/Topk{topk}/item_token_map.json"
-  user_token_map: "embeddings/{dataset}/Topk{topk}/user_token_map.json"
-  cluster_assignments: "embeddings/{dataset}/Topk{topk}/cluster_matrix_manifest_K5_topk{topk}.json"
-  graph_with_clusters: "embeddings/{dataset}/Topk{topk}/graph_with_clusters_K5_topk{topk}.pkl"
-  cluster_centers: "embeddings/{dataset}/Topk{topk}/cluster_centers_K5_topk{topk}.json"
-  cluster_distances: "embeddings/{dataset}/Topk{topk}/cluster_distances_K5_topk{topk}.pt"
-  test_set: "embeddings/{dataset}/Topk{topk}/test_set.csv"
-  test_set_info: "embeddings/{dataset}/Topk{topk}/test_set_info.json"
-  
-  # ----- Processed Data (require topk only) -----
-  cluster_embeddings: "processed_data/{dataset}/Topk{topk}/cluster_embeddings.pkl"
-  natural_beliefs: "processed_data/{dataset}/Topk{topk}/natural_belief_target.json"
-  user_beliefs: "processed_data/{dataset}/Topk{topk}/user_average_beliefs.json"
+  # ----- K_means / LightGCN paths for books -----
+  item_embeddings:     "embeddings/books/K_means/LightGCN/item_embedding.pkl"
+  user_embeddings:     "embeddings/books/K_means/LightGCN/user_embedding.pkl"
+  recommendations:     "embeddings/books/K_means/LightGCN/recommendations.pkl"
+  item_token_map:      "embeddings/books/K_means/item_token_map.json"
+  user_token_map:      "embeddings/books/K_means/user_token_map.json"
+  cluster_assignments: "embeddings/books/K_means/cluster_matrix_manifest_K5.json"
+  cluster_centers:     "embeddings/books/K_means/cluster_centroids.json"
+  cluster_distances:   "embeddings/books/K_means/node_to_center_distance.pt"
+  test_set:            "embeddings/books/K_means/test_set.csv"
+  test_set_info:       "embeddings/books/K_means/test_set_info.json"
+  cluster_embeddings:  "processed_data/books/K_means/cluster_embeddings.pkl"
+  natural_beliefs:     "processed_data/books/K_means/natural_belief_target.json"
+  user_beliefs:        "processed_data/books/K_means/user_average_beliefs.json"
 
 # Logging and Saving
 logging:
