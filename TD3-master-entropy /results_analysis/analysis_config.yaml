@@ -1,0 +1,21 @@
+# Results Analysis Configuration
+# Change these paths when switching datasets/clustering methods
+
+dataset: "books"
+clustering: "K_means"
+rs_model: "LightGCN"
+
+# Number of users in training (for per-user reward calculation)
+num_users: 1075
+
+# Training info
+total_episodes: 100
+
+# Data paths
+paths:
+  user_beliefs: "processed_data/books/K_means/user_average_beliefs.json"
+  natural_belief_target: "processed_data/books/K_means/natural_belief_target.json"
+  cluster_assignments: "embeddings/books/K_means/cluster_matrix_manifest_K5.pkl"
+  results_dir: "results"
+  plots_dir: "plots"
+  output_dir: "results_analysis/output"

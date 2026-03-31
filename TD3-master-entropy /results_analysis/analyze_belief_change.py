@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """
-Analyze belief changes for all 20 episodes compared to initial beliefs
+Analyze belief changes for all episodes compared to initial beliefs
 Saves simplified results to file
 """
 
 import json
+import yaml
 import numpy as np
 from pathlib import Path
+
+# Load analysis config
+with open("results_analysis/analysis_config.yaml", "r") as f:
+    cfg = yaml.safe_load(f)
 
 # Output file
 OUTPUT_FILE = "belief_analysis_episodes_vs_initial.txt"
 
 # Load initial user beliefs (before training)
 print("Loading initial user beliefs...")
-with open("processed_data/news/Topk5/user_average_beliefs.json", "r") as f:
+with open(cfg['paths']['user_beliefs'], "r") as f:
     initial_data = json.load(f)
 
 # Extract initial beliefs
@@ -29,7 +34,7 @@ print(f"Loaded {len(user_ids)} users")
 
 # Load natural belief target
 try:
-    with open("processed_data/news/Topk5/natural_belief_target.json", "r") as f:
+    with open(cfg['paths']['natural_belief_target'], "r") as f:
         target_data = json.load(f)
     natural_target = np.array(target_data['natural_belief_target'])
     has_target = True
@@ -40,10 +45,10 @@ except FileNotFoundError:
 
 # Process all 20 episodes
 print("\nProcessing episodes 1-20...")
-results_dir = Path("results")
+results_dir = Path(cfg['paths']['results_dir'])
 episode_results = {}
 
-for ep in range(1, 51):
+for ep in range(1, 101):
     ep_file = results_dir / f"user_beliefs_episode_{ep}.json"
     if ep_file.exists():
         with open(ep_file, "r") as f:

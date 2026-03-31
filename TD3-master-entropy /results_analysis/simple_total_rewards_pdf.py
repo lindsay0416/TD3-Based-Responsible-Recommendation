@@ -15,8 +15,11 @@ plt.style.use('default')
 
 class SimpleTotalRewardsPDFGenerator:
     def __init__(self):
-        self.results_dir = Path("results")
-        self.plots_dir = Path("plots")
+        import yaml
+        with open("results_analysis/analysis_config.yaml", "r") as f:
+            self.cfg = yaml.safe_load(f)
+        self.results_dir = Path(self.cfg['paths']['results_dir'])
+        self.plots_dir = Path(self.cfg['paths']['plots_dir'])
         self.plots_dir.mkdir(exist_ok=True)
         
         # Storage for analysis results
@@ -66,10 +69,10 @@ class SimpleTotalRewardsPDFGenerator:
             
             # Add average line
             ax.axhline(y=avg_reward, color='#E74C3C', linestyle='--', linewidth=2.5, 
-                      alpha=0.8, label=f'Average: {avg_reward/1e6:.2f}M')
+                      alpha=0.8, label=f'Average: {avg_reward/1e3:.1f}K')
             
             # Set title and labels
-            ax.set_title('Total Reward per Episode Across All 50 Episodes', 
+            ax.set_title('Total Reward per Episode Across All 100 Episodes', 
                         fontsize=20, fontweight='bold', pad=25)
             ax.set_xlabel('Episode', fontsize=16, fontweight='bold')
             ax.set_ylabel('Total Episode Reward', fontsize=16, fontweight='bold')
@@ -85,15 +88,15 @@ class SimpleTotalRewardsPDFGenerator:
             ax.set_axisbelow(True)
             
             # Set axis limits
-            ax.set_xlim(0, 51)
+            ax.set_xlim(0, 101)
             
-            # Format y-axis to show values in millions
-            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x/1e6:.1f}M'))
+            # Format y-axis to show values in thousands
+            ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x/1e3:.0f}K'))
             
             # Customize tick parameters
             ax.tick_params(axis='both', which='major', labelsize=12, width=1.5, length=6)
-            ax.set_xticks(np.arange(0, 51, 5), minor=False)
-            ax.set_xticks(np.arange(0, 51, 1), minor=True)
+            ax.set_xticks(np.arange(0, 101, 5), minor=False)
+            ax.set_xticks(np.arange(0, 101, 1), minor=True)
             
             # Customize spines
             for spine in ax.spines.values():

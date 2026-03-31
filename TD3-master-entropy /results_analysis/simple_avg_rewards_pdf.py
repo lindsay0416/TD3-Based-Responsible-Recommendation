@@ -15,9 +15,13 @@ plt.style.use('default')
 
 class SimpleAvgRewardsPDFGenerator:
     def __init__(self):
-        self.results_dir = Path("results")
-        self.plots_dir = Path("plots")
+        import yaml
+        with open("results_analysis/analysis_config.yaml", "r") as f:
+            self.cfg = yaml.safe_load(f)
+        self.results_dir = Path(self.cfg['paths']['results_dir'])
+        self.plots_dir = Path(self.cfg['paths']['plots_dir'])
         self.plots_dir.mkdir(exist_ok=True)
+        self.num_users = self.cfg['num_users']
         
         # Storage for analysis results
         self.episode_reward_data = {}
@@ -43,7 +47,7 @@ class SimpleAvgRewardsPDFGenerator:
             
             for round_data in episode_data['rounds']:
                 round_reward = round_data['round_reward']
-                users_per_round = 50000  # From config
+                users_per_round = self.num_users
                 total_reward += round_reward
                 total_users += users_per_round
             
@@ -74,7 +78,7 @@ class SimpleAvgRewardsPDFGenerator:
                    markeredgecolor='#8E44AD', markeredgewidth=2)
             
             # Set title and labels
-            ax.set_title('Average Reward per User per Episode Across All 50 Episodes', 
+            ax.set_title('Average Reward per User per Episode Across All 100 Episodes', 
                         fontsize=20, fontweight='bold', pad=25)
             ax.set_xlabel('Episode', fontsize=16, fontweight='bold')
             ax.set_ylabel('Average Reward per User', fontsize=16, fontweight='bold')
@@ -84,12 +88,12 @@ class SimpleAvgRewardsPDFGenerator:
             ax.set_axisbelow(True)
             
             # Set axis limits
-            ax.set_xlim(0, 51)
+            ax.set_xlim(0, 101)
             
             # Customize tick parameters
             ax.tick_params(axis='both', which='major', labelsize=12, width=1.5, length=6)
-            ax.set_xticks(np.arange(0, 51, 5), minor=False)
-            ax.set_xticks(np.arange(0, 51, 1), minor=True)
+            ax.set_xticks(np.arange(0, 101, 5), minor=False)
+            ax.set_xticks(np.arange(0, 101, 1), minor=True)
             
             # Customize spines
             for spine in ax.spines.values():
@@ -120,7 +124,7 @@ def main():
         
         print(f"\nGenerated clean plot for {len(episodes)} episodes")
         print(f"Episode 1 avg reward per user: {first_reward:.4f}")
-        print(f"Episode 50 avg reward per user: {last_reward:.4f}")
+        print(f"Episode 100 avg reward per user: {last_reward:.4f}")
         print(f"File: plots/avg_rewards_per_user_simple.pdf")
     
     print("="*60)

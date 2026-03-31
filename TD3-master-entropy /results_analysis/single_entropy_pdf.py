@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Single Entropy PDF Generator: Clean Average Entropy Plot for All 50 Episodes
+Single Entropy PDF Generator: Clean Average Entropy Plot for All 100 Episodes
 Generates a single-page PDF with optimized layout and statistics positioning.
 """
 
@@ -21,38 +21,45 @@ sns.set_palette("husl")
 
 class SingleEntropyPDFGenerator:
     def __init__(self):
-        self.results_dir = Path("results")
-        self.plots_dir = Path("plots")
-        self.plots_dir.mkdir(exist_ok=True)
-        
-        # Load config to get dataset and topk
+        # Load config first
         self.load_config()
+        
+        self.results_dir = Path(self.analysis_cfg['paths']['results_dir'])
+        self.plots_dir = Path(self.analysis_cfg['paths']['plots_dir'])
+        self.plots_dir.mkdir(exist_ok=True)
         
         # Load cluster mapping
         self.load_cluster_mapping()
         
         # All episodes to analyze
-        self.all_episodes = list(range(1, 51))  # Episodes 1-50
+        self.all_episodes = list(range(1, 101))  # Episodes 1-100
         
         # Storage for analysis results
         self.episode_entropy_data = {}
     
     def load_config(self):
-        """Load configuration from config.yaml."""
+        """Load configuration from analysis_config.yaml and config.yaml."""
+        with open("results_analysis/analysis_config.yaml", "r") as f:
+            self.analysis_cfg = yaml.safe_load(f)
         with open("config.yaml", "r") as f:
-            config = yaml.safe_load(f)
+            self.config = yaml.safe_load(f)
         
-        self.dataset = config['experiment_params']['dataset']
-        self.topk = config['experiment_params']['topk']
-        print(f"Using dataset: {self.dataset}, topk: {self.topk}")
+        self.dataset = self.analysis_cfg['dataset']
+        self.topk = self.analysis_cfg.get('topk', 5)
+        print(f"Using dataset: {self.dataset}, clustering: {self.analysis_cfg['clustering']}")
         
     def load_cluster_mapping(self):
         """Load item to cluster mapping."""
         print("Loading cluster mapping...")
-        cluster_path = f"embeddings/{self.dataset}/Topk{self.topk}/cluster_matrix_manifest_K5_topk{self.topk}.json"
+        cluster_path = self.config['data_paths']['cluster_assignments']
         print(f"Loading from: {cluster_path}")
-        with open(cluster_path, "r") as f:
-            cluster_data = json.load(f)
+        if cluster_path.endswith('.pkl'):
+            import pickle
+            with open(cluster_path, 'rb') as f:
+                cluster_data = pickle.load(f)
+        else:
+            with open(cluster_path, "r") as f:
+                cluster_data = json.load(f)
         
         # Create item to cluster mapping
         self.item_to_cluster = {}
@@ -135,8 +142,8 @@ class SingleEntropyPDFGenerator:
         }
     
     def analyze_all_episodes(self):
-        """Analyze all 50 episodes for entropy."""
-        print(f"Starting entropy analysis for all 50 episodes...")
+        """Analyze all 100 episodes for entropy."""
+        print(f"Starting entropy analysis for all 100 episodes...")
         
         for episode in self.all_episodes:
             result = self.analyze_episode_recommendations(episode)
@@ -172,7 +179,7 @@ class SingleEntropyPDFGenerator:
             ax.plot(episodes, p(episodes), "--", color='#E74C3C', alpha=0.8, linewidth=2.5)
             
             # Set title and labels
-            ax.set_title('Average Entropy Across All 50 Episodes', 
+            ax.set_title('Average Entropy Across All 100 Episodes', 
                         fontsize=20, fontweight='bold', pad=25)
             ax.set_xlabel('Episode', fontsize=16, fontweight='bold')
             ax.set_ylabel('Normalized Entropy', fontsize=16, fontweight='bold')
@@ -202,7 +209,7 @@ class SingleEntropyPDFGenerator:
                       label=f'Episode 1: {entropies[0]:.4f}')
             ax.scatter([episodes[-1]], [entropies[-1]], color='#F39C12', s=150, 
                       zorder=5, edgecolor='white', linewidth=2,
-                      label=f'Episode 50: {entropies[-1]:.4f}')
+                      label=f'Episode 100: {entropies[-1]:.4f}')
             
             # Add trend line to legend
             ax.plot([], [], "--", color='#E74C3C', alpha=0.8, linewidth=2.5,
@@ -215,7 +222,7 @@ class SingleEntropyPDFGenerator:
             legend.get_frame().set_alpha(0.9)
             
             # Set axis limits with some padding
-            ax.set_xlim(0, 51)
+            ax.set_xlim(0, 101)
             entropy_range = max_entropy - min_entropy
             y_padding = entropy_range * 0.15
             ax.set_ylim(min_entropy - y_padding, max_entropy + y_padding)
@@ -225,8 +232,8 @@ class SingleEntropyPDFGenerator:
             ax.tick_params(axis='both', which='minor', width=1, length=3)
             
             # Set minor ticks
-            ax.set_xticks(np.arange(0, 51, 5), minor=False)
-            ax.set_xticks(np.arange(0, 51, 1), minor=True)
+            ax.set_xticks(np.arange(0, 101, 5), minor=False)
+            ax.set_xticks(np.arange(0, 101, 1), minor=True)
             
             # Customize spines
             for spine in ax.spines.values():
@@ -251,7 +258,7 @@ class SingleEntropyPDFGenerator:
         
         ax.plot(episodes, p(episodes), "--", color='#E74C3C', alpha=0.8, linewidth=2.5)
         
-        ax.set_title('Average Entropy Across All 50 Episodes', 
+        ax.set_title('Average Entropy Across All 100 Episodes', 
                     fontsize=20, fontweight='bold', pad=25)
         ax.set_xlabel('Episode', fontsize=16, fontweight='bold')
         ax.set_ylabel('Normalized Entropy', fontsize=16, fontweight='bold')
@@ -264,7 +271,7 @@ class SingleEntropyPDFGenerator:
                   label=f'Episode 1: {entropies[0]:.4f}')
         ax.scatter([episodes[-1]], [entropies[-1]], color='#F39C12', s=150, 
                   zorder=5, edgecolor='white', linewidth=2,
-                  label=f'Episode 50: {entropies[-1]:.4f}')
+                  label=f'Episode 100: {entropies[-1]:.4f}')
         
         ax.plot([], [], "--", color='#E74C3C', alpha=0.8, linewidth=2.5,
                label=f'Trend Line (slope: {z[0]:.6f})')
@@ -274,14 +281,14 @@ class SingleEntropyPDFGenerator:
         legend.get_frame().set_facecolor('white')
         legend.get_frame().set_alpha(0.9)
         
-        ax.set_xlim(0, 51)
+        ax.set_xlim(0, 101)
         ax.set_ylim(min_entropy - y_padding, max_entropy + y_padding)
         
         ax.tick_params(axis='both', which='major', labelsize=12, width=1.5, length=6)
         ax.tick_params(axis='both', which='minor', width=1, length=3)
         
-        ax.set_xticks(np.arange(0, 51, 5), minor=False)
-        ax.set_xticks(np.arange(0, 51, 1), minor=True)
+        ax.set_xticks(np.arange(0, 101, 5), minor=False)
+        ax.set_xticks(np.arange(0, 101, 1), minor=True)
         
         for spine in ax.spines.values():
             spine.set_linewidth(1.5)
@@ -318,7 +325,7 @@ def main():
         print(f"="*50)
         print(f"Episodes analyzed: {len(episodes)}")
         print(f"Entropy Episode 1: {first_entropy:.4f}")
-        print(f"Entropy Episode 50: {last_entropy:.4f}")
+        print(f"Entropy Episode 100: {last_entropy:.4f}")
         if first_entropy > 0:
             print(f"Entropy improvement: {((last_entropy - first_entropy) / first_entropy * 100):+.2f}%")
         else:

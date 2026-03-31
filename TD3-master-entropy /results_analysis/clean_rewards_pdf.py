@@ -20,12 +20,16 @@ sns.set_palette("husl")
 
 class CleanRewardsPDFGenerator:
     def __init__(self):
-        self.results_dir = Path("results")
-        self.plots_dir = Path("plots")
+        import yaml
+        with open("results_analysis/analysis_config.yaml", "r") as f:
+            self.cfg = yaml.safe_load(f)
+        self.results_dir = Path(self.cfg['paths']['results_dir'])
+        self.plots_dir = Path(self.cfg['paths']['plots_dir'])
         self.plots_dir.mkdir(exist_ok=True)
+        self.num_users = self.cfg['num_users']
         
         # Key episodes to analyze
-        self.key_episodes = [1, 10, 20, 30, 40, 50]
+        self.key_episodes = [1, 10, 20, 50, 75, 100]
         
         # Storage for analysis results
         self.episode_reward_data = {}
@@ -57,7 +61,7 @@ class CleanRewardsPDFGenerator:
             
             for round_data in episode_data['rounds']:
                 round_reward = round_data['round_reward']
-                users_in_round = 50000  # From config
+                users_in_round = self.num_users
                 reward_per_user = round_reward / users_in_round
                 round_rewards_per_user.append(reward_per_user)
                 total_reward += round_reward
