@@ -78,9 +78,18 @@ class RecommendationEnvironment:
     
     def _load_data(self):
         """Load all required data files."""
-        # Load user beliefs and embeddings
-        with open(self.config['data_paths']['user_beliefs'], 'r') as f:
-            user_data = json.load(f)
+        # Load user beliefs (supports both pkl and json)
+        user_beliefs_path = self.config['data_paths']['user_beliefs']
+        if user_beliefs_path.endswith('.pkl'):
+            with open(user_beliefs_path, 'rb') as f:
+                raw_beliefs = pickle.load(f)
+            # pkl format: {user_id: [beliefs_list]}
+            user_data = {}
+            for user_id, beliefs in raw_beliefs.items():
+                user_data[user_id] = {'beliefs': beliefs}
+        else:
+            with open(user_beliefs_path, 'r') as f:
+                user_data = json.load(f)
         
         # Extract current user beliefs (will be updated during training)
         self.users = {}
@@ -90,8 +99,8 @@ class RecommendationEnvironment:
             beliefs = np.array(data['beliefs'], dtype=np.float32)
             self.users[user_id] = {
                 'beliefs': beliefs.copy(),
-                'pp1_distance': data['pp1_distance'],
-                'cluster_distances': np.array(data['cluster_distances'], dtype=np.float32)
+                'pp1_distance': data.get('pp1_distance', 0.0),
+                'cluster_distances': np.array(data.get('cluster_distances', np.zeros(5)), dtype=np.float32)
             }
             # Store initial beliefs for episode reset
             self.initial_user_beliefs[user_id] = beliefs.copy()
@@ -164,7 +173,11 @@ class RecommendationEnvironment:
             else:  # PKL format
                 with open(natural_beliefs_path, 'rb') as f:
                     target_data = pickle.load(f)
-                self.natural_belief_target = np.array(target_data['natural_belief_target'], dtype=np.float32)
+                # pkl can be raw numpy array or dict with 'natural_belief_target' key
+                if isinstance(target_data, np.ndarray):
+                    self.natural_belief_target = target_data.astype(np.float32)
+                else:
+                    self.natural_belief_target = np.array(target_data['natural_belief_target'], dtype=np.float32)
             
             print(f"Loaded natural belief target: {self.natural_belief_target}")
             
@@ -189,14 +202,25 @@ class RecommendationEnvironment:
         # Initialize user accepted counts based on initial beliefs and total_items_in_dataset
         self._initialize_user_counts_from_beliefs()
     
+    def _get_cluster_data(self):
+        """Load and cache cluster assignment data (supports pkl and json)."""
+        if hasattr(self, '_cluster_data_cache') and self._cluster_data_cache is not None:
+            return self._cluster_data_cache
+        cluster_file = self.config['data_paths'].get('cluster_assignments')
+        if cluster_file.endswith('.pkl'):
+            with open(cluster_file, 'rb') as f:
+                self._cluster_data_cache = pickle.load(f)
+        else:
+            with open(cluster_file, 'r') as f:
+                self._cluster_data_cache = json.load(f)
+        return self._cluster_data_cache
+
     def _create_enhanced_item_embeddings(self):
         """Create enhanced item embeddings by combining item + cluster embeddings."""
         self.enhanced_item_embeddings = {}
         
-        # Load cluster assignments (using balanced clusters if configured)
-        cluster_file = self.config['data_paths'].get('cluster_assignments', 'embeddings/cluster_matrix_manifest_K5_topk5.json')
-        with open(cluster_file, 'r') as f:
-            cluster_data = json.load(f)
+        # Load cluster assignments (cached)
+        cluster_data = self._get_cluster_data()
         
         # Create item to cluster mapping
         item_to_cluster = {}
@@ -293,9 +317,17 @@ class RecommendationEnvironment:
         # Entropy reward configuration
         self.entropy_reward_weight = self.config['reward'].get('entropy_reward_weight', 1.0)
         self.num_clusters = 5
-        
+
+        # max_distances_tensor[user_idx, i]: running max of |target[i] - belief[user][i]|
+        # Initialized from initial beliefs, updated each step via max(current, previous_max)
+        initial_distances = torch.abs(
+            self.optimal_beliefs_tensor.unsqueeze(0) - self.user_beliefs_tensor
+        )  # [num_users, 5]
+        self.max_distances_tensor = torch.clamp(initial_distances, min=1e-8).to(self.device)
+
         print(f"Optimal beliefs tensor: {self.optimal_beliefs_tensor.shape} on {self.device}")
         print(f"User beliefs tensor: {self.user_beliefs_tensor.shape} on {self.device}")
+        print(f"Max distances tensor: {self.max_distances_tensor.shape} on {self.device}")
         print(f"Termination threshold: {self.termination_threshold}")
         print(f"Entropy reward weight: {self.entropy_reward_weight}")
     
@@ -382,28 +414,32 @@ class RecommendationEnvironment:
             # Part (a): Improvement-based reward
             current_distances = torch.abs(self.optimal_beliefs_tensor - new_beliefs_tensor)
             previous_distances = torch.abs(self.optimal_beliefs_tensor - previous_beliefs)
-            
+
+            # Update per-user max_distance dynamically
+            user_idx = self.user_id_to_index[user_id]
+            self.max_distances_tensor[user_idx] = torch.maximum(
+                self.max_distances_tensor[user_idx], current_distances
+            )
+            max_distance = self.max_distances_tensor[user_idx]  # [5]
+
             # Check for improvements (current_distance < previous_distance)
             improvements = current_distances < previous_distances
-            
-            # Calculate max distance for normalization (theoretical max is 1.0 per cluster)
-            max_distance = 1.0
-            
+
             # Calculate cluster rewards only for improved clusters
             cluster_rewards = torch.zeros(5, device=self.device)
-            
+
             # For improved clusters: (max - current) / max + (previous - current)
             improved_mask = improvements
             if improved_mask.any():
-                # Absolute performance component: (max - current) / max
-                abs_performance = (max_distance - current_distances[improved_mask]) / max_distance
-                
+                # Absolute performance component: (max - current) / max  (per-cluster, per-user)
+                abs_performance = (max_distance[improved_mask] - current_distances[improved_mask]) / max_distance[improved_mask]
+
                 # Improvement bonus: (previous - current)
                 improvement_bonus = previous_distances[improved_mask] - current_distances[improved_mask]
-                
+
                 # Combined reward for improved clusters
                 cluster_rewards[improved_mask] = abs_performance + improvement_bonus
-            
+
             # Sum all cluster rewards
             improvement_reward = cluster_rewards.sum().item()
             
@@ -456,19 +492,22 @@ class RecommendationEnvironment:
             # Calculate distances
             current_distances = torch.abs(optimal_expanded - new_beliefs_batch)  # [batch_size, 5]
             previous_distances = torch.abs(optimal_expanded - previous_beliefs_batch)  # [batch_size, 5]
-            
+
+            # Update per-user max_distances dynamically
+            self.max_distances_tensor[user_indices_tensor] = torch.maximum(
+                self.max_distances_tensor[user_indices_tensor], current_distances
+            )
+            max_distances = self.max_distances_tensor[user_indices_tensor]  # [batch_size, 5]
+
             # Check for improvements
             improvements = current_distances < previous_distances  # [batch_size, 5]
-            
-            # Calculate cluster rewards
-            max_distance = 1.0
-            
-            # Absolute performance component: (max - current) / max
-            abs_performance = (max_distance - current_distances) / max_distance
-            
+
+            # Absolute performance component: (max - current) / max  (per-user, per-cluster)
+            abs_performance = (max_distances - current_distances) / max_distances
+
             # Improvement bonus: (previous - current)
             improvement_bonus = previous_distances - current_distances
-            
+
             # Combined reward for improved clusters only
             cluster_rewards = (abs_performance + improvement_bonus) * improvements.float()
             
@@ -739,10 +778,7 @@ class RecommendationEnvironment:
     def _load_cluster_assignments(self):
         """Pre-load cluster assignments for efficient lookup with GPU tensors."""
         try:
-            # Load cluster assignment mapping once at initialization (using balanced clusters if configured)
-            cluster_file = self.config['data_paths'].get('cluster_assignments', 'embeddings/cluster_matrix_manifest_K5_topk5.json')
-            with open(cluster_file, 'r') as f:
-                cluster_data = json.load(f)
+            cluster_data = self._get_cluster_data()
             
             # Load cluster sizes for belief calculation
             # belief[i] = cluster_accepted_count[i] / total_items_in_dataset
@@ -1273,35 +1309,19 @@ class RecommendationEnvironment:
                     else:
                         distance = 1.0  # Default distance
             
-            # Sigmoid activation parameters
-            sigmoid_scale = self.config['environment'].get('sigmoid_scale', 10000)
+            # Acceptance probability parameters
             baseline_rate = self.config['environment'].get('baseline_acceptance_rate', 0.1)
-            max_distance = self.config['environment'].get('max_cluster_distance', 5)
-            
-            # Calculate distance factor: (1 - distance/max_distance)
-            distance_factor = max(0.0, 1.0 - (distance / max_distance))
-            
-            # Apply Sigmoid activation to user belief
-            # sigmoid(x) = 1 / (1 + exp(-x))
-            belief_activated = 1.0 / (1.0 + np.exp(-user_belief * sigmoid_scale))
-            
-            # Calculate final acceptance probability
-            # Formula: (1 - distance/max_distance) × sigmoid(belief × scale) + baseline
-            acceptance_prob = distance_factor * belief_activated + baseline_rate
-            
+
+            # distance is already normalized (distance_norm from pt file, range [0, 1])
+            # distance_factor: closer to center (lower norm) = higher factor
+            distance_factor = max(0.0, 1.0 - distance)
+
+            # Direct belief value (no sigmoid) — belief is already in [0, 1]
+            # Formula: (1 - distance_norm) × user_belief + baseline
+            acceptance_prob = distance_factor * user_belief + baseline_rate
+
             # Ensure probability is in valid range [0, 1]
             acceptance_prob = max(0.0, min(1.0, acceptance_prob))
-            
-            # Sample verification: print first few calculations for validation (disabled)
-            # if hasattr(self, '_verification_count'):
-            #     self._verification_count += 1
-            # else:
-            #     self._verification_count = 1
-            # 
-            # if self._verification_count <= 5:  # Print first 5 calculations
-            #     print(f"Sigmoid verification #{self._verification_count}: {item_id} → Cluster {item_cluster} → Distance {distance:.1f}")
-            #     print(f"  User belief: {user_belief:.6f} → Sigmoid: {belief_activated:.6f}")
-            #     print(f"  Distance factor: {distance_factor:.3f} → Final prob: {acceptance_prob:.3f} ({acceptance_prob*100:.1f}%)")
 
             return acceptance_prob
             
@@ -1422,9 +1442,7 @@ class RecommendationEnvironment:
         
         # Pre-load cluster data once (optimization) - using balanced clusters if configured
         cluster_load_start = time.time()
-        cluster_file = self.config['data_paths'].get('cluster_assignments', 'embeddings/cluster_matrix_manifest_K5_topk5.json')
-        with open(cluster_file, 'r') as f:
-            cluster_data = json.load(f)
+        cluster_data = self._get_cluster_data()
         
         # Create item to cluster mapping once
         item_to_cluster = {}
@@ -1493,10 +1511,8 @@ class RecommendationEnvironment:
         if not accepted_items:
             return current_beliefs
         
-        # Load cluster assignments (using balanced clusters if configured)
-        cluster_file = self.config['data_paths'].get('cluster_assignments', 'embeddings/cluster_matrix_manifest_K5_topk5.json')
-        with open(cluster_file, 'r') as f:
-            cluster_data = json.load(f)
+        # Load cluster assignments (cached)
+        cluster_data = self._get_cluster_data()
         
         # Create item to cluster mapping
         item_to_cluster = {}
@@ -1776,11 +1792,9 @@ class RecommendationEnvironment:
         if not accepted_items:
             return 0.0
         
-        # Load cluster mapping (could be optimized by caching) - using balanced clusters if configured
+        # Load cluster mapping (cached)
         try:
-            cluster_file = self.config['data_paths'].get('cluster_assignments', 'embeddings/cluster_matrix_manifest_K5_topk5.json')
-            with open(cluster_file, 'r') as f:
-                cluster_data = json.load(f)
+            cluster_data = self._get_cluster_data()
             
             item_to_cluster = {}
             for cluster_id, items in cluster_data['cluster_to_items'].items():
@@ -1848,6 +1862,22 @@ class RecommendationEnvironment:
         
         # Reset interactions
         self._reset_user_interactions()
+
+        # Reset max_distances_tensor to initial distances for active users
+        user_indices = [
+            self.user_id_to_index[uid]
+            for uid in users_to_reset
+            if uid in self.user_id_to_index
+        ]
+        if user_indices:
+            user_indices_tensor = torch.LongTensor(user_indices).to(self.device)
+            initial_beliefs_list = [self.initial_user_beliefs[uid] for uid in users_to_reset if uid in self.user_id_to_index]
+            initial_beliefs_tensor = torch.FloatTensor(initial_beliefs_list).to(self.device)
+            initial_distances = torch.abs(
+                self.optimal_beliefs_tensor.unsqueeze(0) - initial_beliefs_tensor
+            )
+            self.max_distances_tensor[user_indices_tensor] = torch.clamp(initial_distances, min=1e-8)
+
         print(f"Starting episode {self.current_episode}")
     
     def next_round(self):

@@ -12,14 +12,15 @@
 # EXPERIMENT PARAMETERS - Change these to switch datasets
 # ============================================================================
 experiment_params:
-  topk: 5
+  # topk: 5
   rs_model: "LightGCN"
   dataset: "books"
+  clustering: "K_means"
 
 # Training Parameters
 training:
-  episodes: 50                  # Total number of training episodes
-  rounds_per_episode: 50        # Rounds per episode (optimized for belief convergence)
+  episodes: 100                  # Total number of training episodes
+  rounds_per_episode: 100        # Rounds per episode (optimized for belief convergence)
   users_per_round: 50000        # Number of users to train per round
   batch_size: 1000              # Batch size for GPU-accelerated processing
   warmup_transitions: 100000    # Transitions before TD3 training starts
@@ -50,7 +51,7 @@ environment:
   sigmoid_scale: 10000          # Sigmoid activation scale
                                 # - Transforms small beliefs (0.001) to high probabilities
                                 # - Creates strong differentiation in acceptance rates
-  baseline_acceptance_rate: 0.1 # Minimum acceptance probability (10%)
+  baseline_acceptance_rate: 0.2 # Minimum acceptance probability (20%)
                                 # - Ensures exploration even for low-belief clusters
                                 # - Prevents complete rejection of unfamiliar content
   max_cluster_distance: 4       # Maximum item-to-cluster distance
@@ -73,7 +74,7 @@ recommendation:
 # Reward Parameters (Step-based System)
 reward:
   step_based: true
-  termination_threshold: 0.15   # Average distance threshold for termination bonus
+  termination_threshold: 0.05   # Average distance threshold for termination bonus
                                 # - Initial avg_distance is ~0.20, so threshold must be lower
                                 # - Triggers when user beliefs are close to natural target
   termination_reward: 5.0
@@ -97,14 +98,14 @@ data_paths:
   recommendations:     "embeddings/books/K_means/LightGCN/recommendations.pkl"
   item_token_map:      "embeddings/books/K_means/item_token_map.json"
   user_token_map:      "embeddings/books/K_means/user_token_map.json"
-  cluster_assignments: "embeddings/books/K_means/cluster_matrix_manifest_K5.json"
+  cluster_assignments: "embeddings/books/K_means/cluster_matrix_manifest_K5.pkl"
   cluster_centers:     "embeddings/books/K_means/cluster_centroids.json"
   cluster_distances:   "embeddings/books/K_means/node_to_center_distance.pt"
   test_set:            "embeddings/books/K_means/test_set.csv"
   test_set_info:       "embeddings/books/K_means/test_set_info.json"
   cluster_embeddings:  "processed_data/books/K_means/cluster_embeddings.pkl"
-  natural_beliefs:     "processed_data/books/K_means/natural_belief_target.json"
-  user_beliefs:        "processed_data/books/K_means/user_average_beliefs.json"
+  natural_beliefs:     "processed_data/books/K_means/natural_belief_target.pkl"
+  user_beliefs:        "processed_data/books/K_means/user_average_beliefs.pkl"
 
 # Logging and Saving
 logging:
