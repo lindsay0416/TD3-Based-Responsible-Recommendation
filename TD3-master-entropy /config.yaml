@@ -20,10 +20,10 @@ experiment_params:
 # Training Parameters
 training:
   episodes: 100                  # Total number of training episodes
-  rounds_per_episode: 100        # Rounds per episode (optimized for belief convergence)
+  rounds_per_episode: 50        # Rounds per episode (optimized for belief convergence)
   users_per_round: 50000        # Number of users to train per round
   batch_size: 1000              # Batch size for GPU-accelerated processing
-  warmup_transitions: 100000    # Transitions before TD3 training starts
+  warmup_transitions: 10000    # Transitions before TD3 training starts
   train_frequency: 1            # Train TD3 every N rounds
 
 # RL Algorithm Parameters (TD3)
@@ -38,8 +38,8 @@ td3:
 
 # Environment Parameters
 environment:
-  state_dim: 69                 # State dimension: 5 (beliefs) + 64 (user embedding)
-  action_dim: 64                # Action dimension: virtual item embedding
+  state_dim: 133                 # State dimension: 5 (beliefs) + 128 (user embedding)
+  action_dim: 128                # Action dimension: virtual item embedding
   max_action: 1.0               # Maximum action value (normalized embeddings)
   
   # Acceptance Probability Settings
@@ -67,14 +67,14 @@ environment:
 
 # Recommendation Parameters
 recommendation:
-  rl_list_size: 60
-  total_recommendations: 100
+  rl_list_size: 40
+  total_recommendations: 40
   similarity_metric: "cosine"
 
 # Reward Parameters (Step-based System)
 reward:
   step_based: true
-  termination_threshold: 0.05   # Average distance threshold for termination bonus
+  termination_threshold: 0.10   # Average distance threshold for termination bonus
                                 # - Initial avg_distance is ~0.20, so threshold must be lower
                                 # - Triggers when user beliefs are close to natural target
   termination_reward: 5.0

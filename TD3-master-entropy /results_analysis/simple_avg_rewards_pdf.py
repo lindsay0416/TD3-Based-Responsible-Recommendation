@@ -78,7 +78,7 @@ class SimpleAvgRewardsPDFGenerator:
                    markeredgecolor='#8E44AD', markeredgewidth=2)
             
             # Set title and labels
-            ax.set_title('Average Reward per User per Episode Across All 100 Episodes', 
+            ax.set_title('Average Reward per User per Step Across All 100 Episodes', 
                         fontsize=20, fontweight='bold', pad=25)
             ax.set_xlabel('Episode', fontsize=16, fontweight='bold')
             ax.set_ylabel('Average Reward per User', fontsize=16, fontweight='bold')

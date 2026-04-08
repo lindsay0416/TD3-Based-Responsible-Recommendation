@@ -84,9 +84,21 @@ class RecommendationEnvironment:
             with open(user_beliefs_path, 'rb') as f:
                 raw_beliefs = pickle.load(f)
             # pkl format: {user_id: [beliefs_list]}
+            # Also load json for total_interacted/total_accepted metadata
+            json_path = user_beliefs_path.replace('.pkl', '.json')
+            try:
+                with open(json_path, 'r') as f:
+                    json_data = json.load(f)
+            except FileNotFoundError:
+                json_data = {}
             user_data = {}
             for user_id, beliefs in raw_beliefs.items():
-                user_data[user_id] = {'beliefs': beliefs}
+                meta = json_data.get(user_id, {})
+                user_data[user_id] = {
+                    'beliefs': beliefs,
+                    'total_interacted': meta.get('total_interacted', 0),
+                    'total_accepted': meta.get('total_accepted', 0),
+                }
         else:
             with open(user_beliefs_path, 'r') as f:
                 user_data = json.load(f)
@@ -100,7 +112,9 @@ class RecommendationEnvironment:
             self.users[user_id] = {
                 'beliefs': beliefs.copy(),
                 'pp1_distance': data.get('pp1_distance', 0.0),
-                'cluster_distances': np.array(data.get('cluster_distances', np.zeros(5)), dtype=np.float32)
+                'cluster_distances': np.array(data.get('cluster_distances', np.zeros(5)), dtype=np.float32),
+                'total_interacted': data.get('total_interacted', 0),
+                'total_accepted': data.get('total_accepted', 0),
             }
             # Store initial beliefs for episode reset
             self.initial_user_beliefs[user_id] = beliefs.copy()
@@ -126,6 +140,7 @@ class RecommendationEnvironment:
         # Load user embeddings
         with open(self.config['data_paths']['user_embeddings'], 'rb') as f:
             self.user_embeddings = pickle.load(f)
+        self._emb_dim = next(iter(self.user_embeddings.values())).shape[0]
         
         # Load item embeddings
         with open(self.config['data_paths']['item_embeddings'], 'rb') as f:
@@ -276,10 +291,13 @@ class RecommendationEnvironment:
             user_ids = list(self.users.keys())
             user_embeddings_list = []
             
+            # Detect embedding dimension from first available embedding
+            emb_dim = next(iter(self.user_embeddings.values())).shape[0]
+            
             for user_id in user_ids:
                 token = self.user_token_map.get(user_id, -1)
                 token_str = str(token) if token != -1 else None
-                user_emb = self.user_embeddings.get(token_str, np.zeros(64, dtype=np.float32)) if token_str else np.zeros(64, dtype=np.float32)
+                user_emb = self.user_embeddings.get(token_str, np.zeros(emb_dim, dtype=np.float32)) if token_str else np.zeros(emb_dim, dtype=np.float32)
                 user_embeddings_list.append(user_emb)
             
             self.user_embeddings_tensor = torch.FloatTensor(user_embeddings_list).to(self.device)
@@ -318,8 +336,8 @@ class RecommendationEnvironment:
         self.entropy_reward_weight = self.config['reward'].get('entropy_reward_weight', 1.0)
         self.num_clusters = 5
 
-        # max_distances_tensor[user_idx, i]: running max of |target[i] - belief[user][i]|
-        # Initialized from initial beliefs, updated each step via max(current, previous_max)
+        # max_distances_tensor[user_idx, i]: |target[i] - initial_belief[user][i]|
+        # Fixed at episode start, not updated during steps
         initial_distances = torch.abs(
             self.optimal_beliefs_tensor.unsqueeze(0) - self.user_beliefs_tensor
         )  # [num_users, 5]
@@ -415,11 +433,8 @@ class RecommendationEnvironment:
             current_distances = torch.abs(self.optimal_beliefs_tensor - new_beliefs_tensor)
             previous_distances = torch.abs(self.optimal_beliefs_tensor - previous_beliefs)
 
-            # Update per-user max_distance dynamically
+            # Use fixed per-user max_distance (from episode start)
             user_idx = self.user_id_to_index[user_id]
-            self.max_distances_tensor[user_idx] = torch.maximum(
-                self.max_distances_tensor[user_idx], current_distances
-            )
             max_distance = self.max_distances_tensor[user_idx]  # [5]
 
             # Check for improvements (current_distance < previous_distance)
@@ -433,6 +448,7 @@ class RecommendationEnvironment:
             if improved_mask.any():
                 # Absolute performance component: (max - current) / max  (per-cluster, per-user)
                 abs_performance = (max_distance[improved_mask] - current_distances[improved_mask]) / max_distance[improved_mask]
+                abs_performance = torch.clamp(abs_performance, min=0.0)
 
                 # Improvement bonus: (previous - current)
                 improvement_bonus = previous_distances[improved_mask] - current_distances[improved_mask]
@@ -493,10 +509,7 @@ class RecommendationEnvironment:
             current_distances = torch.abs(optimal_expanded - new_beliefs_batch)  # [batch_size, 5]
             previous_distances = torch.abs(optimal_expanded - previous_beliefs_batch)  # [batch_size, 5]
 
-            # Update per-user max_distances dynamically
-            self.max_distances_tensor[user_indices_tensor] = torch.maximum(
-                self.max_distances_tensor[user_indices_tensor], current_distances
-            )
+            # Use fixed per-user max_distances (from episode start)
             max_distances = self.max_distances_tensor[user_indices_tensor]  # [batch_size, 5]
 
             # Check for improvements
@@ -504,6 +517,7 @@ class RecommendationEnvironment:
 
             # Absolute performance component: (max - current) / max  (per-user, per-cluster)
             abs_performance = (max_distances - current_distances) / max_distances
+            abs_performance = torch.clamp(abs_performance, min=0.0)
 
             # Improvement bonus: (previous - current)
             improvement_bonus = previous_distances - current_distances
@@ -530,24 +544,29 @@ class RecommendationEnvironment:
     def update_user_beliefs_step(self, user_id: str, accepted_items: List[str], rejected_items: List[str], recommended_items: List[str] = None) -> Tuple[np.ndarray, float]:
         """
         Update user beliefs after a single step and calculate reward.
-        Uses count-based distribution: belief[i] = count[i] / total_count
-        Only counts UNIQUE items - duplicates are skipped.
+        
+        Formula: belief[i] = accepted_in_cluster[i] / total_interacted
+        Where total_interacted = all items shown in recommendation list (accepted + rejected).
+        Only counts UNIQUE accepted items - duplicates are skipped.
         
         Args:
             user_id: User identifier
             accepted_items: List of accepted item IDs
             rejected_items: List of rejected item IDs
-            recommended_items: List of recommended items (for calculating entropy reward)
+            recommended_items: List of recommended items (for entropy reward + interacted count)
             
         Returns:
             Tuple of (new_beliefs, step_reward)
         """
+        # Count all interacted items (the full recommendation list)
+        user_counts = self.user_accepted_counts[user_id]
+        
+        if recommended_items:
+            user_counts['total_interacted'] += len(recommended_items)
+        
         if not accepted_items:
-            # No accepted items, no belief update, no reward
             return self.users[user_id]['beliefs'].copy(), 0.0
         
-        # Direct reference to user's data (avoid repeated dict lookups)
-        user_counts = self.user_accepted_counts[user_id]
         user_accepted_set = user_counts['accepted_items']
         cluster_counts = user_counts['cluster_counts']
         
@@ -555,32 +574,28 @@ class RecommendationEnvironment:
         item_to_cluster = self.item_to_cluster
         item_id_normalized = getattr(self, 'item_id_normalized', None)
         
-        # Update counts for each accepted item (only if not already accepted)
+        # Update counts for each accepted item (duplicates count)
         for item_id in accepted_items:
             item_id_str = str(item_id)
             
-            # Skip if this item was already accepted before (O(1) set lookup)
-            if item_id_str in user_accepted_set:
-                continue
-            
-            # Fast cluster lookup
             if item_id_normalized:
                 normalized_id = item_id_normalized.get(item_id_str, item_id_str)
                 item_cluster = item_to_cluster.get(normalized_id)
             else:
                 item_cluster = item_to_cluster.get(item_id_str)
                 if item_cluster is None:
-                    # Try with/without N prefix
                     alt_id = f"N{item_id_str}" if not item_id_str.startswith('N') else item_id_str[1:]
                     item_cluster = item_to_cluster.get(alt_id)
             
             if item_cluster is not None and 0 <= item_cluster < 5:
                 cluster_counts[item_cluster] += 1
-                user_accepted_set.add(item_id_str)
         
-        # Calculate new beliefs: belief[i] = accepted_in_cluster[i] / total_items_in_dataset
-        # Same denominator as target, so distance shows real gap in coverage
-        new_beliefs = cluster_counts / self.total_items_in_dataset
+        # New formula: belief[i] = accepted_in_cluster[i] / total_interacted
+        total_interacted = user_counts['total_interacted']
+        if total_interacted > 0:
+            new_beliefs = cluster_counts / total_interacted
+        else:
+            new_beliefs = np.zeros(5, dtype=np.float32)
         
         # Update user beliefs in CPU storage
         self.users[user_id]['beliefs'] = new_beliefs
@@ -834,27 +849,31 @@ class RecommendationEnvironment:
             self.item_id_normalized = None
     
     def _initialize_user_counts_from_beliefs(self):
-        """Initialize user accepted counts based on initial beliefs and total_items_in_dataset."""
-        if not hasattr(self, 'total_items_in_dataset'):
-            print("Warning: total_items_in_dataset not loaded, cannot initialize counts")
-            return
+        """Initialize user accepted counts based on initial beliefs and total_interacted.
         
+        New formula: belief[i] = accepted_in_cluster[i] / total_interacted
+        So: accepted_in_cluster[i] = belief[i] * total_interacted
+        """
         print("Initializing user accepted counts from initial beliefs...")
         
-        for user_id in self.users.keys():
+        for user_id, user_info in self.users.items():
             initial_beliefs = self.initial_user_beliefs[user_id]
+            total_interacted = user_info.get('total_interacted', 0)
+            total_accepted = user_info.get('total_accepted', 0)
             
-            # Reverse calculate counts from beliefs
-            # belief[i] = count[i] / total_items_in_dataset
-            # => count[i] = belief[i] * total_items_in_dataset
-            initial_counts = initial_beliefs * self.total_items_in_dataset
+            # Reverse calculate: accepted_in_cluster[i] = belief[i] * total_interacted
+            initial_counts = initial_beliefs * total_interacted
             
             self.user_accepted_counts[user_id] = {
-                'cluster_counts': initial_counts.copy(),
-                'accepted_items': set(),  # Track unique accepted items
+                'cluster_counts': initial_counts.astype(np.float32).copy(),
+                'accepted_items': set(),
+                'total_interacted': int(total_interacted),
+                'total_accepted': int(total_accepted),
             }
             self.initial_user_counts[user_id] = {
-                'cluster_counts': initial_counts.copy(),
+                'cluster_counts': initial_counts.astype(np.float32).copy(),
+                'total_interacted': int(total_interacted),
+                'total_accepted': int(total_accepted),
             }
         
         print(f"Initialized counts for {len(self.users)} users")
@@ -883,14 +902,14 @@ class RecommendationEnvironment:
     def get_user_state(self, user_id: str) -> np.ndarray:
         """
         Get current state for a user.
-        State = user beliefs (5D) + user embedding (64D) = 69D
+        State = user beliefs (5D) + user embedding (emb_dim D)
         """
         user_beliefs = self.users[user_id]['beliefs']
         
         # Get user embedding using token
         token = self.user_token_map.get(user_id, -1)
         token_str = str(token) if token != -1 else None
-        user_embedding = self.user_embeddings.get(token_str, np.zeros(64, dtype=np.float32)) if token_str else np.zeros(64, dtype=np.float32)
+        user_embedding = self.user_embeddings.get(token_str, np.zeros(self._emb_dim, dtype=np.float32)) if token_str else np.zeros(self._emb_dim, dtype=np.float32)
         
         # Concatenate beliefs and embedding
         state = np.concatenate([user_beliefs, user_embedding])
@@ -914,7 +933,7 @@ class RecommendationEnvironment:
                 # Fallback to original method using token
                 token = self.user_token_map.get(user_id, -1)
                 token_str = str(token) if token != -1 else None
-                user_embedding = self.user_embeddings.get(token_str, np.zeros(64, dtype=np.float32)) if token_str else np.zeros(64, dtype=np.float32)
+                user_embedding = self.user_embeddings.get(token_str, np.zeros(self._emb_dim, dtype=np.float32)) if token_str else np.zeros(self._emb_dim, dtype=np.float32)
             
             # Concatenate beliefs and embedding
             state = np.concatenate([user_beliefs, user_embedding])
@@ -938,50 +957,12 @@ class RecommendationEnvironment:
         # Get RL recommendations using cosine similarity
         rl_recommendations = self._get_rl_recommendations(virtual_item)
         
-        # Get pre-trained recommendations using token mapping
-        # Use original user_id for token mapping (user_token_map expects string format like "U100")
-        numeric_token = str(self.user_token_map.get(user_id, -1))  # Get numeric token, default to -1 if not found
-        pretrained_token_recs = self.pretrained_recommendations.get(numeric_token, [])
-        
-        # Convert pretrained recommendations from tokens to item IDs
-        pretrained_recs = []
-        if pretrained_token_recs:
-            # Create reverse token mapping: token -> item_id
-            token_to_item = {str(token): item_id for item_id, token in self.item_token_map.items()}
-            
-            # Sample verification for token conversion
-            if hasattr(self, '_token_conversion_shown'):
-                pass  # Already shown
-            else:
-                self._token_conversion_shown = True
-                print(f"Token conversion example (user {user_id}):")
-                for i, token in enumerate(pretrained_token_recs[:3]):
-                    token_str = str(token)
-                    if token_str in token_to_item:
-                        item_id = token_to_item[token_str]
-                        print(f"  Token {token} → Item {item_id}")
-                    else:
-                        print(f"  Token {token} → No corresponding Item")
-            
-            for token in pretrained_token_recs:
-                token_str = str(token)
-                if token_str in token_to_item:
-                    pretrained_recs.append(token_to_item[token_str])
-                # Skip tokens that don't have corresponding item IDs
-        
-        # Combine recommendations (RL + pre-trained)
-        combined_recs = rl_recommendations + pretrained_recs
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        final_recs = []
-        for item in combined_recs:
-            if item not in seen and len(final_recs) < self.config['recommendation']['total_recommendations']:
-                seen.add(item)
-                final_recs.append(item)
-        
+        # Get pre-trained recommendations (already stored as item IDs)
+        pretrained_recs = self.pretrained_recommendations.get(user_id, [])
 
-        
+        # Combine recommendations: RL list + pre-trained list (no dedup, allow overlap)
+        final_recs = rl_recommendations + pretrained_recs
+
         return final_recs
     
     def _get_rl_recommendations(self, virtual_item: np.ndarray) -> List[str]:
@@ -1849,8 +1830,9 @@ class RecommendationEnvironment:
                 # Reset counts to initial values (based on initial beliefs)
                 if user_id in self.initial_user_counts:
                     self.user_accepted_counts[user_id]['cluster_counts'] = self.initial_user_counts[user_id]['cluster_counts'].copy()
-                    # Clear the accepted items set for new episode
                     self.user_accepted_counts[user_id]['accepted_items'] = set()
+                    self.user_accepted_counts[user_id]['total_interacted'] = self.initial_user_counts[user_id]['total_interacted']
+                    self.user_accepted_counts[user_id]['total_accepted'] = self.initial_user_counts[user_id]['total_accepted']
                 
                 # Calculate simple distance to natural target
                 initial_beliefs = self.initial_user_beliefs[user_id]

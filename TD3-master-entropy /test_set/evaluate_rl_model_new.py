@@ -108,14 +108,11 @@ def load_test_set(config):
     Returns:
         dict: {user_id: [item_ids]} mapping from user tokens to item tokens
     """
-    dataset = config["experiment_params"]["dataset"]
-    topk = config["experiment_params"]["topk"]
-    test_set_path = f"embeddings/{dataset}/Topk{topk}/test_set.csv"
-
+    test_set_path = config["data_paths"]["test_set"]
     print(f"Loading test set from: {test_set_path}")
 
-    user_token_map_path = f"embeddings/{dataset}/Topk{topk}/user_token_map.json"
-    item_token_map_path = f"embeddings/{dataset}/Topk{topk}/item_token_map.json"
+    user_token_map_path = config["data_paths"]["user_token_map"]
+    item_token_map_path = config["data_paths"]["item_token_map"]
 
     with open(user_token_map_path, "r") as f:
         user_token_map = json.load(f)
@@ -162,12 +159,17 @@ def calculate_entropy(cluster_counts, num_clusters=5):
 
 
 def dcg_at_k_binary(recommended_items, relevant_set, k):
-    """DCG@k for a single ranked list with binary relevance."""
+    """DCG@k for a single ranked list with binary relevance (deduplicated)."""
     dcg = 0.0
-    # rank positions are 1-based in the log denominator (standard)
-    for r, item in enumerate(recommended_items[:k], start=1):
+    seen = set()
+    rank = 0
+    for item in recommended_items[:k]:
+        if item in seen:
+            continue
+        seen.add(item)
+        rank += 1
         if item in relevant_set:
-            dcg += 1.0 / np.log2(r + 1)
+            dcg += 1.0 / np.log2(rank + 1)
     return float(dcg)
 
 
@@ -195,8 +197,8 @@ def precision_recall_at_k(recommended_items, relevant_set, k):
     if not topk:
         return 0.0, 0.0
 
-    hits = sum(1 for it in topk if it in relevant_set)
-    precision = hits / len(topk)
+    hits = len(set(topk) & relevant_set)
+    precision = hits / k
     recall = hits / len(relevant_set) if len(relevant_set) > 0 else 0.0
     return float(precision), float(recall)
 
@@ -289,6 +291,7 @@ def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rou
 
             accepted_count = 0
             shown_count = 0
+            cumulative_accepted = set()  # Accumulate accepted items across all steps
 
             for _ in range(num_rounds):
                 state = env.get_user_state(user_id)
@@ -296,7 +299,7 @@ def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rou
                 with torch.no_grad():
                     action = td3_agent.select_action(state)
 
-                # Rec_u(t): RS + RL merged inside env
+                # Rec_u: RS + RL merged inside env
                 recommended_items = env.get_recommendations(user_id, action)
                 if not recommended_items:
                     continue
@@ -304,8 +307,11 @@ def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rou
                 # Simulate acceptance for CURRENT step
                 accepted_items, rejected_items = env.simulate_user_interaction(user_id, recommended_items)
 
-                # Rel_u(t) = test_set[u] ∪ accepted_t  (CURRENT step only!)
-                relevant_set = base_test_set.union(set(accepted_items))
+                # Accumulate accepted items from RL across all steps
+                cumulative_accepted.update(accepted_items)
+
+                # Rel_u = test_set[user] ∪ all accepted items so far
+                relevant_set = base_test_set.union(cumulative_accepted)
 
                 # K = actual list length
                 k = len(recommended_items)
@@ -326,9 +332,10 @@ def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rou
 
                 step_entropy_list.append(calculate_entropy(cluster_counts, num_clusters=5))
 
-                # ---- Precision/Recall/NDCG per step ----
-                p, r = precision_recall_at_k(recommended_items, relevant_set, k)
-                n = ndcg_at_k_binary(recommended_items, relevant_set, k)
+                # ---- Precision/Recall/NDCG per step (at K=20) ----
+                eval_k = 20
+                p, r = precision_recall_at_k(recommended_items, relevant_set, eval_k)
+                n = ndcg_at_k_binary(recommended_items, relevant_set, eval_k)
 
                 step_precision_list.append(p)
                 step_recall_list.append(r)
@@ -376,7 +383,7 @@ def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rou
     results = {
         "num_test_users": len(valid_test_users),
         "num_rounds_per_user": num_rounds,
-        "K_eval": "len(Rec_u(t)) per step",
+        "K_eval": 20,
         "metrics": {
             "avg_entropy": {
                 **summary(users_entropy),

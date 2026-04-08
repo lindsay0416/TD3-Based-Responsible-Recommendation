@@ -2,6 +2,8 @@ data/
 __pycache__
 models/
 results/
+models-1/
+results-1/
 td3_actor_analysis/
 .history
 *.pyc
