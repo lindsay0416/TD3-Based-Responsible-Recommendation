@@ -310,8 +310,8 @@ def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rou
                 # Accumulate accepted items from RL across all steps
                 cumulative_accepted.update(accepted_items)
 
-                # Rel_u = test_set[user] ∪ all accepted items so far
-                relevant_set = base_test_set.union(cumulative_accepted)
+                # Rel_u = test_set[user] ∪ cumulative accepted items from RL
+                precision_recall_relevant = base_test_set.union(cumulative_accepted)
 
                 # K = actual list length
                 k = len(recommended_items)
@@ -334,8 +334,8 @@ def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rou
 
                 # ---- Precision/Recall/NDCG per step (at K=20) ----
                 eval_k = 20
-                p, r = precision_recall_at_k(recommended_items, relevant_set, eval_k)
-                n = ndcg_at_k_binary(recommended_items, relevant_set, eval_k)
+                p, r = precision_recall_at_k(recommended_items, precision_recall_relevant, eval_k)
+                n = ndcg_at_k_binary(recommended_items, precision_recall_relevant, eval_k)
 
                 step_precision_list.append(p)
                 step_recall_list.append(r)
@@ -467,7 +467,7 @@ def main():
         td3_agent=td3_agent,
         test_user_ids=test_user_ids,
         test_set_ground_truth=test_set_ground_truth,
-        num_rounds=50,
+        num_rounds=1,
         batch_size=1000,
     )
 

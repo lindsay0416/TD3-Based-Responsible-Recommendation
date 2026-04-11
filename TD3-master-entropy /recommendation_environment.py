@@ -603,6 +603,9 @@ class RecommendationEnvironment:
         # Calculate step reward using GPU (includes entropy reward)
         step_reward = self.calculate_step_reward_gpu(user_id, new_beliefs, recommended_items)
         
+        # Ensure non-negative reward
+        step_reward = max(0.0, step_reward)
+        
         return new_beliefs, step_reward
     
     def batch_update_user_beliefs_gpu(self, user_ids: List[str], accepted_items_batch: List[List[str]], 
@@ -960,8 +963,14 @@ class RecommendationEnvironment:
         # Get pre-trained recommendations (already stored as item IDs)
         pretrained_recs = self.pretrained_recommendations.get(user_id, [])
 
-        # Combine recommendations: RL list + pre-trained list (no dedup, allow overlap)
-        final_recs = rl_recommendations + pretrained_recs
+        # Combine recommendations: interleave RL and RS items
+        final_recs = []
+        max_len = max(len(rl_recommendations), len(pretrained_recs))
+        for i in range(max_len):
+            if i < len(rl_recommendations):
+                final_recs.append(rl_recommendations[i])
+            if i < len(pretrained_recs):
+                final_recs.append(pretrained_recs[i])
 
         return final_recs
     
@@ -1373,21 +1382,17 @@ class RecommendationEnvironment:
         for i, user_id in enumerate(user_ids):
             rl_recommendations = batch_rl_recs[i]
             
-            # Get pre-trained recommendations (individual lookup needed)
-            # Use original user_id for token mapping (user_token_map expects string format like "U100")
-            numeric_token = str(self.user_token_map.get(user_id, -1))  # Get numeric token, default to -1 if not found
-            pretrained_recs = self.pretrained_recommendations.get(numeric_token, [])
+            # Get pre-trained recommendations (already stored as item IDs)
+            pretrained_recs = self.pretrained_recommendations.get(user_id, [])
             
-            # Combine recommendations
-            combined_recs = rl_recommendations + pretrained_recs
-            
-            # Remove duplicates while preserving order
-            seen = set()
+            # Combine: interleave RL and RS items
             final_recs = []
-            for item in combined_recs:
-                if item not in seen and len(final_recs) < self.config['recommendation']['total_recommendations']:
-                    seen.add(item)
-                    final_recs.append(item)
+            max_len = max(len(rl_recommendations), len(pretrained_recs))
+            for j in range(max_len):
+                if j < len(rl_recommendations):
+                    final_recs.append(rl_recommendations[j])
+                if j < len(pretrained_recs):
+                    final_recs.append(pretrained_recs[j])
             
             # Simulate user interaction
             accepted_items, rejected_items = self.simulate_user_interaction(user_id, final_recs)
