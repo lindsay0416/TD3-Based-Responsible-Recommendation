@@ -565,7 +565,9 @@ class RecommendationEnvironment:
             user_counts['total_interacted'] += len(recommended_items)
         
         if not accepted_items:
-            return self.users[user_id]['beliefs'].copy(), 0.0
+            # No accepted items, no belief update, but still give entropy reward
+            entropy_reward = self.calculate_entropy_reward(recommended_items) if recommended_items else 0.0
+            return self.users[user_id]['beliefs'].copy(), max(0.0, entropy_reward)
         
         user_accepted_set = user_counts['accepted_items']
         cluster_counts = user_counts['cluster_counts']
@@ -590,10 +592,10 @@ class RecommendationEnvironment:
             if item_cluster is not None and 0 <= item_cluster < 5:
                 cluster_counts[item_cluster] += 1
         
-        # New formula: belief[i] = accepted_in_cluster[i] / total_interacted
-        total_interacted = user_counts['total_interacted']
-        if total_interacted > 0:
-            new_beliefs = cluster_counts / total_interacted
+        # New formula: belief[i] = accepted_in_cluster[i] / total_accepted
+        total_accepted = cluster_counts.sum()
+        if total_accepted > 0:
+            new_beliefs = cluster_counts / total_accepted
         else:
             new_beliefs = np.zeros(5, dtype=np.float32)
         
@@ -864,8 +866,8 @@ class RecommendationEnvironment:
             total_interacted = user_info.get('total_interacted', 0)
             total_accepted = user_info.get('total_accepted', 0)
             
-            # Reverse calculate: accepted_in_cluster[i] = belief[i] * total_interacted
-            initial_counts = initial_beliefs * total_interacted
+            # Reverse calculate: accepted_in_cluster[i] = belief[i] * total_accepted
+            initial_counts = initial_beliefs * total_accepted
             
             self.user_accepted_counts[user_id] = {
                 'cluster_counts': initial_counts.astype(np.float32).copy(),

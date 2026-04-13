@@ -4,6 +4,10 @@ models/
 results/
 models-1/
 results-1/
+models-2/
+results-2/
+models-3/
+results-3/
 td3_actor_analysis/
 .history
 *.pyc

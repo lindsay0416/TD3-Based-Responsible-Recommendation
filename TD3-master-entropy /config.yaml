@@ -80,7 +80,7 @@ reward:
   termination_reward: 5.0
   max_cluster_distance: 1.0
   use_gpu_rewards: true
-  entropy_reward_weight: 1.0
+  entropy_reward_weight: 10.0
   improvement_threshold: 0.01
   store_individual_rewards: false
   aggregate_rewards: true
