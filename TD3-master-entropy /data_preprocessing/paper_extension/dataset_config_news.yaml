@@ -1,0 +1,93 @@
+# News Dataset Configuration
+# Supports multiple topk values by changing the topk parameter
+
+dataset: news
+topk: 5  # Change to 15 for Topk15
+
+# Base paths (use {topk} placeholder)
+paths:
+  embeddings_base: "embeddings/news"
+  processed_base: "processed_data/news/Topk{topk}"
+  data_base: "data/news"
+
+# ============================================
+# 1. Natural Belief Target Generation
+# ============================================
+natural_target:
+  input:
+    cluster_manifest: "embeddings/news/K_means/cluster_matrix_manifest_K5.json"
+  output:
+    json: "processed_data/news/K_means/natural_belief_target.json"
+    pkl: "processed_data/news/K_means/natural_belief_target.pkl"
+    utilities: "processed_data/news/K_means/filter_bubble_utilities.py"
+  options:
+    expected_clusters: 5
+    generate_utilities: true
+
+# ============================================
+# 2. User Average Beliefs Generation
+# ============================================
+user_beliefs:
+  input:
+    behaviors_file: "data/news/new_behaviors.tsv"
+    separator: "\t"
+    cluster_manifest: "embeddings/news/K_means/cluster_matrix_manifest_K5.json"
+    natural_belief_target: "processed_data/news/K_means/natural_belief_target.json"
+  output:
+    json: "processed_data/news/K_means/user_average_beliefs.json"
+    pkl: "processed_data/news/K_means/user_average_beliefs.pkl"
+  options:
+    expected_clusters: 5
+
+# ============================================
+# 3. Cluster Embeddings Generation
+# ============================================
+cluster_embeddings:
+  input:
+    item_embeddings: "embeddings/news/K_means/LightGCN/item_embedding.pkl"
+    cluster_manifest: "embeddings/news/K_means/cluster_matrix_manifest_K5.json"
+    item_token_map: "embeddings/news/K_means/item_token_map.json"
+  output:
+    pkl: "processed_data/news/K_means/cluster_embeddings.pkl"
+    npy: "processed_data/news/K_means/cluster_embeddings.npy"
+    info_json: "processed_data/news/K_means/cluster_embeddings_info.json"
+  options:
+    expected_clusters: 5
+
+# ============================================
+# 4. Cluster Node Distances with Tokens
+# ============================================
+cluster_node_distances_tokens:
+  input:
+    cluster_node_distances_csv: "embeddings/news/Topk{topk}/cluster_node_distances_K5_topk{topk}.csv"
+    item_token_map: "embeddings/news/Topk{topk}/item_token_map.json"
+  output:
+    csv: "processed_data/news/Topk{topk}/cluster_node_distances_tokens_K5_topk{topk}.csv"
+
+# ============================================
+# 5. Cluster Distances PT (PyTorch tensor for training)
+# ============================================
+cluster_distances_pt:
+  input:
+    cluster_node_distances_csv: "embeddings/news/Topk{topk}/cluster_node_distances_K5_topk{topk}.csv"
+    item_token_map: "embeddings/news/Topk{topk}/item_token_map.json"
+  output:
+    pt: "embeddings/news/Topk{topk}/cluster_distances_K5_topk{topk}.pt"
+
+# ============================================
+# 6. Test Set CSV
+# ============================================
+test_set:
+  input:
+    behaviors_file: "data/news/new_behaviors.tsv"
+    separator: "\t"
+    user_token_map: "embeddings/news/K_means/user_token_map.json"
+    item_token_map: "embeddings/news/K_means/item_token_map.json"
+  output:
+    csv: "embeddings/news/K_means/test_set.csv"
+    info_json: "embeddings/news/K_means/test_set_info.json"
+
+# Logging
+logging:
+  verbose: true
+  show_samples: 5

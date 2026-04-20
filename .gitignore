@@ -19,3 +19,5 @@ news/
 movies/
 .vscode
 plots/
+results_news/
+models_news/
