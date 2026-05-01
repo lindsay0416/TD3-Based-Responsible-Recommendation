@@ -227,7 +227,7 @@ def mean_abs_distance(beliefs, target):
 # -----------------------------
 # Evaluation
 # -----------------------------
-def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rounds=1000, batch_size=1000):
+def evaluate_model(env, td3_agent, test_user_ids, test_set_ground_truth, num_rounds=1, batch_size=1000):
     """
     Per user:
       - run num_rounds steps

@@ -88,10 +88,16 @@ class RecommendationEnvironment:
         
         for user_id, data in user_data.items():
             beliefs = np.array(data['beliefs'], dtype=np.float32)
+            # cluster_distances may not exist in all datasets; compute a default
+            if 'cluster_distances' in data:
+                cluster_distances = np.array(data['cluster_distances'], dtype=np.float32)
+            else:
+                # Will be properly recalculated once natural_belief_target is loaded
+                cluster_distances = np.zeros(5, dtype=np.float32)
             self.users[user_id] = {
                 'beliefs': beliefs.copy(),
-                'pp1_distance': data['pp1_distance'],
-                'cluster_distances': np.array(data['cluster_distances'], dtype=np.float32)
+                'pp1_distance': data.get('pp1_distance', 0.0),
+                'cluster_distances': cluster_distances
             }
             # Store initial beliefs for episode reset
             self.initial_user_beliefs[user_id] = beliefs.copy()
@@ -188,6 +194,14 @@ class RecommendationEnvironment:
         
         # Initialize user accepted counts based on initial beliefs and total_items_in_dataset
         self._initialize_user_counts_from_beliefs()
+        
+        # Backfill cluster_distances for users that were loaded without them
+        for user_id, user_data in self.users.items():
+            if np.all(user_data['cluster_distances'] == 0):
+                user_data['cluster_distances'] = np.abs(
+                    user_data['beliefs'] - self.natural_belief_target
+                ).astype(np.float32)
+                user_data['pp1_distance'] = float(user_data['cluster_distances'].sum())
     
     def _create_enhanced_item_embeddings(self):
         """Create enhanced item embeddings by combining item + cluster embeddings."""
