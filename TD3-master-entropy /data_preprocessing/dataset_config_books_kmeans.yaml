@@ -1,0 +1,105 @@
+# Books Dataset Configuration - K_means version
+# All input data from: embeddings/books/K_means/
+# All output data to:  processed_data/books/K_means/
+
+dataset: books
+topk: 5
+
+# Base paths
+paths:
+  embeddings_base: "embeddings/books/K_means"
+  processed_base: "processed_data/books/K_means"
+  data_base: "data/books"
+
+# ============================================
+# 1. Natural Belief Target Generation
+# ============================================
+natural_target:
+  input:
+    cluster_manifest: "embeddings/books/K_means/cluster_matrix_manifest_K5.json"
+  output:
+    json: "processed_data/books/K_means/natural_belief_target.json"
+    pkl: "processed_data/books/K_means/natural_belief_target.pkl"
+    utilities: "processed_data/books/K_means/filter_bubble_utilities.py"
+  options:
+    expected_clusters: 5
+    generate_utilities: true
+
+# ============================================
+# 2. User Average Beliefs Generation
+# ============================================
+user_beliefs:
+  input:
+    behaviors_file: "data/books/new_behaviors.tsv"
+    separator: "\t"
+    cluster_manifest: "embeddings/books/K_means/cluster_matrix_manifest_K5.json"
+    natural_belief_target: "processed_data/books/K_means/natural_belief_target.json"
+  output:
+    json: "processed_data/books/K_means/user_average_beliefs.json"
+    pkl: "processed_data/books/K_means/user_average_beliefs.pkl"
+  options:
+    expected_clusters: 5
+
+# ============================================
+# 3. Cluster Embeddings Generation
+# ============================================
+cluster_embeddings:
+  input:
+    item_embeddings: "embeddings/books/K_means/LightGCN/item_embedding.pkl"
+    cluster_manifest: "embeddings/books/K_means/cluster_matrix_manifest_K5.json"
+    item_token_map: "embeddings/books/K_means/item_token_map.json"
+  output:
+    pkl: "processed_data/books/K_means/cluster_embeddings.pkl"
+    npy: "processed_data/books/K_means/cluster_embeddings.npy"
+    info_json: "processed_data/books/K_means/cluster_embeddings_info.json"
+  options:
+    expected_clusters: 5
+
+# ============================================
+# 4. Cluster Node Distances with Tokens
+# ============================================
+cluster_node_distances_tokens:
+  input:
+    cluster_node_distances_csv: "embeddings/books/K_means/cluster_node_distances_K5.csv"
+    item_token_map: "embeddings/books/K_means/item_token_map.json"
+  output:
+    csv: "processed_data/books/K_means/cluster_node_distances_tokens_K5.csv"
+
+# ============================================
+# 5. Cluster Distances PT (PyTorch tensor for training)
+# ============================================
+cluster_distances_pt:
+  input:
+    cluster_node_distances_csv: "embeddings/books/K_means/cluster_node_distances_K5.csv"
+    item_token_map: "embeddings/books/K_means/item_token_map.json"
+  output:
+    pt: "embeddings/books/K_means/cluster_distances_K5.pt"
+
+# ============================================
+# 6. Test Set CSV
+# ============================================
+test_set:
+  input:
+    behaviors_file: "data/books/new_behaviors.tsv"
+    separator: "\t"
+    user_token_map: "embeddings/books/K_means/user_token_map.json"
+    item_token_map: "embeddings/books/K_means/item_token_map.json"
+  output:
+    csv: "embeddings/books/K_means/test_set.csv"
+    info_json: "embeddings/books/K_means/test_set_info.json"
+
+# Logging
+logging:
+  verbose: true
+  show_samples: 5
+
+
+# Usage:
+# # 生成所有文件
+# python data_preprocessing/preprocess_dataset.py --config data_preprocessing/dataset_config_books_kmeans.yaml
+#
+# # 只生成某个组件
+# python data_preprocessing/preprocess_dataset.py --config data_preprocessing/dataset_config_books_kmeans.yaml --only natural_target
+# python data_preprocessing/preprocess_dataset.py --config data_preprocessing/dataset_config_books_kmeans.yaml --only user_beliefs
+# python data_preprocessing/preprocess_dataset.py --config data_preprocessing/dataset_config_books_kmeans.yaml --only cluster_embeddings
+# python data_preprocessing/preprocess_dataset.py --config data_preprocessing/dataset_config_books_kmeans.yaml --only test_set

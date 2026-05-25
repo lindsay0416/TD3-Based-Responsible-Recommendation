@@ -12,23 +12,29 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class Actor(nn.Module):
+	# FIX 2026-05-24: reverted to Fujimoto's original TD3 actor architecture
+	# (3 layers / 256 hidden) from the "Updated architecture" 4-layer / 128-hidden
+	# variant that was here. Empirically the deeper variant pushed pre-tanh logits
+	# into the 10-50 magnitude range even with normal-magnitude weights (l4 abs_max
+	# ~0.7), causing tanh to saturate to +/-1 across nearly all output dims and all
+	# input states; that's what produced the "all 14 final_actor saturated" symptom
+	# on the previous sweep. Critic was already on Fujimoto's standard 3-layer 256
+	# architecture, so the actor/critic asymmetry was the structural defect.
+	# Reverting the actor to match Fujimoto + critic dimensionality.
 	def __init__(self, state_dim, action_dim, max_action):
 		super(Actor, self).__init__()
 
-		# Updated architecture: 69D → 128D → 128D → 128D → 64D
-		self.l1 = nn.Linear(state_dim, 128)    # Input Layer (69D) → Hidden Layer 1 (128D)
-		self.l2 = nn.Linear(128, 128)          # Hidden Layer 1 (128D) → Hidden Layer 2 (128D)
-		self.l3 = nn.Linear(128, 128)          # Hidden Layer 2 (128D) → Hidden Layer 3 (128D)
-		self.l4 = nn.Linear(128, action_dim)   # Hidden Layer 3 (128D) → Output Layer (64D)
-		
+		self.l1 = nn.Linear(state_dim, 256)
+		self.l2 = nn.Linear(256, 256)
+		self.l3 = nn.Linear(256, action_dim)
+
 		self.max_action = max_action
-		
+
 
 	def forward(self, state):
 		a = F.relu(self.l1(state))
 		a = F.relu(self.l2(a))
-		a = F.relu(self.l3(a))
-		return self.max_action * torch.tanh(self.l4(a))
+		return self.max_action * torch.tanh(self.l3(a))
 
 
 class Critic(nn.Module):
@@ -139,10 +145,16 @@ class TD3(object):
 		# Delayed policy updates
 		if self.total_it % self.policy_freq == 0:
 
-			# Compute actor losse
-			actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
-			
-			# Optimize the actor 
+			# FIX 2026-05-24 (B): added action L2 penalty to actor loss. Architecture
+			# fix alone left some backbones (LightGCN, NCL) saturating the actor; the
+			# L2 term penalizes raw action magnitude, providing direct gradient pressure
+			# against drift into tanh saturation. lambda=0.01 is small enough that the
+			# Q-gradient still dominates direction learning but consistently checks
+			# magnitude growth.
+			actor_action = self.actor(state)
+			actor_loss = -self.critic.Q1(state, actor_action).mean() + 0.01 * actor_action.pow(2).mean()
+
+			# Optimize the actor
 			self.actor_optimizer.zero_grad()
 			actor_loss.backward()
 			self.actor_optimizer.step()

@@ -224,9 +224,18 @@ class RecommendationTrainer:
                     noise = torch.normal(0, 0.1, size=batch_actions.shape).to(batch_actions.device)
                     batch_actions = torch.clamp(batch_actions + noise, -1, 1)
                 
-                # Optional: Pre-normalize TD3 outputs for consistency
-                # This ensures all virtual items have unit norm, which can help training stability
-                batch_actions = torch.nn.functional.normalize(batch_actions, p=2, dim=1)
+                # FIX 2026-05-23: removed the L2 unit-normalize that was here.
+                # That normalize stored unit-norm actions in the replay buffer, but TD3's
+                # actor loss is -Q1(state, actor(state)) using the raw (unnormalized) actor
+                # output. critic and actor saw different action distributions; critic's
+                # Q-function was only trained on the unit sphere while actor optimization
+                # extrapolated into the ||a||->sqrt(action_dim) corner, with no penalty on
+                # magnitude, so actor weights grew until tanh saturated within ~10 episodes
+                # (verified across all 14 trained final_actor checkpoints).
+                # env._get_batch_rl_recommendations normalizes virtual_items internally for
+                # cosine similarity, so removing this line does NOT change the recommended
+                # slate; it only restores consistent action distribution between buffer and
+                # actor loss.
             
             # Execute batch actions in environment
             batch_results = self.env.batch_step(batch_users, batch_actions)
@@ -263,7 +272,8 @@ class RecommendationTrainer:
                 batch_rewards_list.append(reward)
                 
                 # Termination condition: check if user reached optimal beliefs
-                avg_distance = np.mean([abs(self.env.natural_belief_target[j] - info['new_beliefs'][j]) for j in range(5)])
+                K = self.env.num_clusters
+                avg_distance = np.mean([abs(self.env.natural_belief_target[j] - info['new_beliefs'][j]) for j in range(K)])
                 done = avg_distance < self.env.termination_threshold  # Use threshold from config
                 batch_dones_list.append(done)
                 
@@ -533,7 +543,8 @@ class RecommendationTrainer:
         for user_id in self.user_list:
             if user_id in self.env.users:
                 user_beliefs = self.env.users[user_id]['beliefs']
-                distance = np.mean([abs(optimal_beliefs[i] - user_beliefs[i]) for i in range(5)])
+                K = self.env.num_clusters
+                distance = np.mean([abs(optimal_beliefs[i] - user_beliefs[i]) for i in range(K)])
                 current_distances.append(distance)
         
         current_avg_distance = np.mean(current_distances) if current_distances else 0.0
@@ -691,59 +702,54 @@ class RecommendationTrainer:
     def save_round_recommendations(self, episode_num, round_num, recommendations):
         """
         Save recommendations for a specific round for cluster distribution analysis.
-        Uses per-episode files to avoid memory issues.
+
+        FIX 2026-05-23: original implementation accumulated all rounds into a single
+        per-episode JSON via a read-modify-write pattern (load full file -> append round
+        -> dump full file) executed every single round. By episode 17 the file had grown
+        to ~24MB / 1.15M lines; one write got interrupted / corrupted and the next
+        json.load raised JSONDecodeError("Expecting ',' delimiter: line 1157374 column 19")
+        which killed movies/LightGCN mid-training. The summary file had the same
+        accumulating pattern.
+
+        Refactored to write each round to its own file (no read-modify-write), and a
+        per-call append to a JSONL summary instead of overwriting a JSON dict. Output
+        artifacts are slightly different (per-round files plus a .jsonl summary) but
+        downstream offline analysis (results_analysis/single_entropy_pdf.py) is not in
+        the Table 3 sweep critical path.
         """
-        # Use separate file for each episode to avoid huge files
-        filename = f'recommendations_ep{episode_num}.json'
+        # Per-round file, no read-modify-write.
+        filename = f'recommendations_ep{episode_num}_r{round_num}.json'
         filepath = os.path.join(self.config['logging']['results_dir'], filename)
-        
-        # Load existing data for this episode if file exists
-        if os.path.exists(filepath):
-            with open(filepath, 'r') as f:
-                episode_data = json.load(f)
-        else:
-            episode_data = {
-                'episode': episode_num,
-                'rounds': {}
-            }
-        
-        # Sample recommendations to reduce memory (keep 1000 users per round)
-        # This is sufficient for cluster distribution analysis
+
         sample_size = min(1000, len(recommendations))
         import random
-        sampled_recs = random.sample(recommendations, sample_size) if len(recommendations) > sample_size else recommendations
-        
-        # Save sampled recommendations for this round
-        episode_data['rounds'][f'round_{round_num}'] = {
+        sampled_recs = (random.sample(recommendations, sample_size)
+                        if len(recommendations) > sample_size else recommendations)
+
+        round_data = {
+            'episode': episode_num,
             'round': round_num,
             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'total_users': len(recommendations),
             'sampled_users': len(sampled_recs),
-            'recommendations': sampled_recs
+            'recommendations': sampled_recs,
         }
-        
-        # Save back to file
+
         with open(filepath, 'w') as f:
-            json.dump(episode_data, f, indent=2)
-        
-        # Also save a lightweight summary for quick access
-        summary_file = os.path.join(self.config['logging']['results_dir'], 'recommendations_summary.json')
-        if os.path.exists(summary_file):
-            with open(summary_file, 'r') as f:
-                summary = json.load(f)
-        else:
-            summary = {}
-        
-        key = f"ep{episode_num}_round{round_num}"
-        summary[key] = {
+            json.dump(round_data, f, indent=2)
+
+        # Append-only summary as JSONL; no full-file rewrite, immune to mid-write
+        # corruption of prior lines.
+        summary_file = os.path.join(self.config['logging']['results_dir'],
+                                    'recommendations_summary.jsonl')
+        summary_entry = {
             'episode': episode_num,
             'round': round_num,
             'total_users': len(recommendations),
-            'file': filename
+            'file': filename,
         }
-        
-        with open(summary_file, 'w') as f:
-            json.dump(summary, f, indent=2)
+        with open(summary_file, 'a') as f:
+            f.write(json.dumps(summary_entry) + '\n')
     
     def save_current_user_beliefs(self, episode_num):
         """Save current user beliefs after each episode to separate files."""

@@ -1,5 +1,6 @@
 # Path A K=5 Table 3 retrain config (sigmoid_scale=3500).
-# Dataset: Books, Backbone: LightGCN, Clustering: K_means
+# Rendered per (dataset, backbone) by generate_config.py.
+# Placeholders: books, LightGCN, 3500, /Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy /results_table3_retrain
 
 experiment_params:
   topk: 5
@@ -54,25 +55,25 @@ reward:
   reward_aggregation_window: 50
 
 data_paths:
-  item_embeddings: "embeddings/{dataset}/K_means/{rs_model}/item_embedding.pkl"
-  user_embeddings: "embeddings/{dataset}/K_means/{rs_model}/user_embedding.pkl"
-  recommendations: "embeddings/{dataset}/K_means/{rs_model}/recommendations.pkl"
-  item_token_map: "embeddings/{dataset}/K_means/item_token_map.json"
-  user_token_map: "embeddings/{dataset}/K_means/user_token_map.json"
-  cluster_assignments: "embeddings/{dataset}/K_means/cluster_matrix_manifest_K5.json"
-  cluster_centers: "embeddings/{dataset}/K_means/cluster_centroids.json"
-  cluster_distances: "embeddings/{dataset}/K_means/cluster_distances_K5.pt"
-  test_set: "embeddings/{dataset}/K_means/test_set.csv"
-  test_set_info: "embeddings/{dataset}/K_means/test_set_info.json"
-  cluster_embeddings: "processed_data/{dataset}/K_means/cluster_embeddings.pkl"
-  natural_beliefs: "processed_data/{dataset}/K_means/natural_belief_target.json"
-  user_beliefs: "processed_data/{dataset}/K_means/user_average_beliefs.json"
+  item_embeddings: "embeddings/books/K_means/LightGCN/item_embedding.pkl"
+  user_embeddings: "embeddings/books/K_means/LightGCN/user_embedding.pkl"
+  recommendations: "embeddings/books/K_means/LightGCN/recommendations.pkl"
+  item_token_map: "embeddings/books/K_means/item_token_map.json"
+  user_token_map: "embeddings/books/K_means/user_token_map.json"
+  cluster_assignments: "embeddings/books/K_means/cluster_matrix_manifest_K5.json"
+  cluster_centers: "embeddings/books/K_means/cluster_centroids.json"
+  cluster_distances: "embeddings/books/K_means/cluster_distances_K5.pt"
+  test_set: "embeddings/books/K_means/test_set.csv"
+  test_set_info: "embeddings/books/K_means/test_set_info.json"
+  cluster_embeddings: "processed_data/books/K_means/cluster_embeddings.pkl"
+  natural_beliefs: "processed_data/books/K_means/natural_belief_target.json"
+  user_beliefs: "processed_data/books/K_means/user_average_beliefs.json"
 
 logging:
   save_frequency: 1000
   log_frequency: 100
-  results_dir: "results/books/LightGCN/results"
-  models_dir: "results/books/LightGCN/models"
+  results_dir: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy /results_table3_retrain/books/LightGCN/results"
+  models_dir: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy /results_table3_retrain/books/LightGCN/models"
 
 experiment:
   seed: 42

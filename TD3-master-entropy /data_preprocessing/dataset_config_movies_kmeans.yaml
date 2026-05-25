@@ -1,0 +1,74 @@
+# News Dataset Configuration - K_means version
+# All input data from: embeddings/movies/K_means/
+# All output data to:  processed_data/movies/K_means/
+
+dataset: movies
+topk: 5
+
+paths:
+  embeddings_base: "embeddings/movies/K_means"
+  processed_base: "processed_data/movies/K_means"
+  data_base: "data/movies"
+
+natural_target:
+  input:
+    cluster_manifest: "embeddings/movies/K_means/cluster_matrix_manifest_K5.json"
+  output:
+    json: "processed_data/movies/K_means/natural_belief_target.json"
+    pkl: "processed_data/movies/K_means/natural_belief_target.pkl"
+    utilities: "processed_data/movies/K_means/filter_bubble_utilities.py"
+  options:
+    expected_clusters: 5
+    generate_utilities: true
+
+user_beliefs:
+  input:
+    behaviors_file: "data/movies/new_behaviors.tsv"
+    separator: "\t"
+    cluster_manifest: "embeddings/movies/K_means/cluster_matrix_manifest_K5.json"
+    natural_belief_target: "processed_data/movies/K_means/natural_belief_target.json"
+  output:
+    json: "processed_data/movies/K_means/user_average_beliefs.json"
+    pkl: "processed_data/movies/K_means/user_average_beliefs.pkl"
+  options:
+    expected_clusters: 5
+
+cluster_embeddings:
+  input:
+    item_embeddings: "embeddings/movies/K_means/LightGCN/item_embedding.pkl"
+    cluster_manifest: "embeddings/movies/K_means/cluster_matrix_manifest_K5.json"
+    item_token_map: "embeddings/movies/K_means/item_token_map.json"
+  output:
+    pkl: "processed_data/movies/K_means/cluster_embeddings.pkl"
+    npy: "processed_data/movies/K_means/cluster_embeddings.npy"
+    info_json: "processed_data/movies/K_means/cluster_embeddings_info.json"
+  options:
+    expected_clusters: 5
+
+cluster_node_distances_tokens:
+  input:
+    cluster_node_distances_csv: "embeddings/movies/K_means/cluster_node_distances_K5.csv"
+    item_token_map: "embeddings/movies/K_means/item_token_map.json"
+  output:
+    csv: "processed_data/movies/K_means/cluster_node_distances_tokens_K5.csv"
+
+cluster_distances_pt:
+  input:
+    cluster_node_distances_csv: "embeddings/movies/K_means/cluster_node_distances_K5.csv"
+    item_token_map: "embeddings/movies/K_means/item_token_map.json"
+  output:
+    pt: "embeddings/movies/K_means/cluster_distances_K5.pt"
+
+test_set:
+  input:
+    behaviors_file: "data/movies/new_behaviors.tsv"
+    separator: "\t"
+    user_token_map: "embeddings/movies/K_means/user_token_map.json"
+    item_token_map: "embeddings/movies/K_means/item_token_map.json"
+  output:
+    csv: "embeddings/movies/K_means/test_set.csv"
+    info_json: "embeddings/movies/K_means/test_set_info.json"
+
+logging:
+  verbose: true
+  show_samples: 5

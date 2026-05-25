@@ -1,0 +1,126 @@
+# ============================================================================
+# Recommendation RL System Configuration
+# ============================================================================
+# This configuration has been optimized based on:
+# 1. Adaptive belief update mechanism (0.01-0.02 learning rate)
+# 2. Sigmoid-based acceptance probability (~60% acceptance rate)
+# 3. Sufficient training rounds to reach natural belief targets
+# 4. Standard TD3 hyperparameters for stable learning
+# ============================================================================
+
+# ============================================================================
+# EXPERIMENT PARAMETERS - Change these to switch datasets
+# ============================================================================
+experiment_params:
+  topk: 5
+  rs_model: "LightGCN"
+  dataset: "news"
+
+# Training Parameters
+training:
+  episodes: 50                  # Total number of training episodes
+  rounds_per_episode: 50        # Rounds per episode (optimized for belief convergence)
+  users_per_round: 50000        # Number of users to train per round
+  batch_size: 1000              # Batch size for GPU-accelerated processing
+  warmup_transitions: 100000    # Transitions before TD3 training starts
+  train_frequency: 1            # Train TD3 every N rounds
+
+# RL Algorithm Parameters (TD3)
+td3:
+  discount: 0.95                # Discount factor (γ) for future rewards
+  tau: 0.005                    # Soft target network update rate
+  policy_noise: 0.2             # Noise added to target policy during critic update
+  noise_clip: 0.5               # Range to clip target policy noise
+  policy_freq: 2                # Delayed policy update frequency
+  batch_size: 128               # Training batch size
+  learning_rate: 3e-4           # Learning rate for both actor and critic
+
+# Environment Parameters
+environment:
+  state_dim: 69                 # State dimension: 5 (beliefs) + 64 (user embedding)
+  action_dim: 64                # Action dimension: virtual item embedding
+  max_action: 0.5               # FIX 2026-05-24 (B): was 1.0; halved to give tanh more linear headroom (saturation ceiling sqrt(action_dim) * max_action drops from 8 -> 4). env normalizes virtual_item internally for cosine similarity so recommendation behavior is unchanged.
+  
+  # Acceptance Probability Settings
+  use_intelligent_acceptance: true  # Use sigmoid-based acceptance (recommended)
+  user_acceptance_rate: 0.25        # Fallback rate when intelligent acceptance disabled
+  
+  # Sigmoid-based Acceptance Parameters
+  # Formula: acceptance = (1 - distance/max_distance) × sigmoid(belief × scale) + baseline
+  sigmoid_scale: 10000          # Sigmoid activation scale
+                                # - Transforms small beliefs (0.001) to high probabilities
+                                # - Creates strong differentiation in acceptance rates
+  baseline_acceptance_rate: 0.1 # Minimum acceptance probability (10%)
+                                # - Ensures exploration even for low-belief clusters
+                                # - Prevents complete rejection of unfamiliar content
+  max_cluster_distance: 4       # Maximum item-to-cluster distance
+                                # - From empirical data analysis
+                                # - Used for distance normalization
+  
+  # Forced Cluster 3 Exploration (Cold Start Solution)
+  forced_cluster3_ratio: 0.0   # Force 20% of recommendations to be Cluster 3
+                                # - Breaks the cold start cycle for Cluster 3
+                                # - 0.0 = disabled, 0.20 = 20% forced, 1.0 = 100% forced
+                                # - Recommended: 0.15-0.25 for effective exploration
+                                # - Can be gradually reduced as Cluster 3 beliefs improve
+
+# Recommendation Parameters
+recommendation:
+  rl_list_size: 60
+  total_recommendations: 100
+  similarity_metric: "cosine"
+
+# Reward Parameters (Step-based System)
+reward:
+  step_based: true
+  termination_threshold: 0.15   # Average distance threshold for termination bonus
+                                # - Initial avg_distance is ~0.20, so threshold must be lower
+                                # - Triggers when user beliefs are close to natural target
+  termination_reward: 5.0
+  max_cluster_distance: 1.0
+  use_gpu_rewards: true
+  entropy_reward_weight: 1.0
+  improvement_threshold: 0.01
+  store_individual_rewards: false
+  aggregate_rewards: true
+  reward_aggregation_window: 50
+
+# ============================================================================
+# DATA PATHS - Template-based paths (auto-resolved from experiment_params)
+# ============================================================================
+# Use {topk}, {rs_model}, {dataset} placeholders - they will be replaced automatically
+# ============================================================================
+data_paths:
+  # ----- Template paths: use {dataset}, {topk}, {rs_model} placeholders -----
+  item_embeddings:     "embeddings/{dataset}/Topk{topk}/{rs_model}/item_embedding.pkl"
+  user_embeddings:     "embeddings/{dataset}/Topk{topk}/{rs_model}/user_embedding.pkl"
+  recommendations:     "embeddings/{dataset}/Topk{topk}/{rs_model}/recommendations.pkl"
+  item_token_map:      "embeddings/{dataset}/Topk{topk}/item_token_map.json"
+  user_token_map:      "embeddings/{dataset}/Topk{topk}/user_token_map.json"
+  cluster_assignments: "embeddings/{dataset}/Topk{topk}/cluster_matrix_manifest_K5_topk{topk}.json"
+  cluster_centers:     "embeddings/{dataset}/Topk{topk}/cluster_centers_K5_topk{topk}.json"
+  cluster_distances:   "embeddings/{dataset}/Topk{topk}/cluster_distances_K5_topk{topk}.pt"
+  test_set:            "embeddings/{dataset}/Topk{topk}/test_set.csv"
+  test_set_info:       "embeddings/{dataset}/Topk{topk}/test_set_info.json"
+  cluster_embeddings:  "processed_data/{dataset}/Topk{topk}/cluster_embeddings.pkl"
+  natural_beliefs:     "processed_data/{dataset}/Topk{topk}/natural_belief_target.json"
+  user_beliefs:        "processed_data/{dataset}/Topk{topk}/user_average_beliefs.json"
+
+# Logging and Saving
+logging:
+  save_frequency: 1000
+  log_frequency: 100
+  results_dir: "results"
+  models_dir: "models"
+
+# Experiment Settings
+experiment:
+  seed: 42
+  device: "auto"
+  num_workers: 1
+
+# Debug Settings
+debug:
+  verbose: true
+  save_transitions: false
+  validate_data: true

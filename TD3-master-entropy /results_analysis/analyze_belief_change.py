@@ -13,7 +13,7 @@ OUTPUT_FILE = "belief_analysis_episodes_vs_initial.txt"
 
 # Load initial user beliefs (before training)
 print("Loading initial user beliefs...")
-with open("processed_data/news/Topk5/user_average_beliefs.json", "r") as f:
+with open("processed_data/books/K_means/user_average_beliefs.json", "r") as f:
     initial_data = json.load(f)
 
 # Extract initial beliefs
@@ -29,7 +29,7 @@ print(f"Loaded {len(user_ids)} users")
 
 # Load natural belief target
 try:
-    with open("processed_data/news/Topk5/natural_belief_target.json", "r") as f:
+    with open("processed_data/books/K_means/natural_belief_target.json", "r") as f:
         target_data = json.load(f)
     natural_target = np.array(target_data['natural_belief_target'])
     has_target = True
@@ -40,7 +40,7 @@ except FileNotFoundError:
 
 # Process all 20 episodes
 print("\nProcessing episodes 1-20...")
-results_dir = Path("results")
+results_dir = Path("results/books/LightGCN/results")
 episode_results = {}
 
 for ep in range(1, 51):

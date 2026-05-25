@@ -15,7 +15,7 @@ plt.style.use('default')
 
 class SimpleTotalRewardsPDFGenerator:
     def __init__(self):
-        self.results_dir = Path("results")
+        self.results_dir = Path("results/books/LightGCN/results")
         self.plots_dir = Path("plots")
         self.plots_dir.mkdir(exist_ok=True)
         

@@ -21,7 +21,7 @@ sns.set_palette("husl")
 
 class SingleEntropyPDFGenerator:
     def __init__(self):
-        self.results_dir = Path("results")
+        self.results_dir = Path("results/books/LightGCN/results")
         self.plots_dir = Path("plots")
         self.plots_dir.mkdir(exist_ok=True)
         
@@ -49,7 +49,7 @@ class SingleEntropyPDFGenerator:
     def load_cluster_mapping(self):
         """Load item to cluster mapping."""
         print("Loading cluster mapping...")
-        cluster_path = f"embeddings/{self.dataset}/Topk{self.topk}/cluster_matrix_manifest_K5_topk{self.topk}.json"
+        cluster_path = f"embeddings/{self.dataset}/K_means/cluster_matrix_manifest_K5.json"
         print(f"Loading from: {cluster_path}")
         with open(cluster_path, "r") as f:
             cluster_data = json.load(f)
