@@ -35,8 +35,7 @@ def main():
     # escape characters inside double-quoted strings).
     base_path = str(Path(args.base_path).resolve()).replace("\\", "/")
     out_root = args.out_root
-    if not Path(out_root).is_absolute():
-        out_root = str((Path(args.base_path) / out_root).resolve())
+    # Keep out_root as relative path for logging directories
     out_root = out_root.replace("\\", "/")
 
     with open(args.template, "r", encoding="utf-8") as f:

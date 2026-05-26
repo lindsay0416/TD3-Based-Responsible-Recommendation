@@ -1,0 +1,45 @@
+/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/recommendation_environment.py:282: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:256.)
+  self.enhanced_embeddings_tensor_normalized = torch.FloatTensor(item_embeddings_list).to(self.device)
+============================================================
+Table 3 rerun: agent_mode=ferl, k_eval=10, num_rounds=50
+============================================================
+experiment_params: dataset=movies, rs_model=ENMF, topk=5
+Test users: 332, test_set users: 332
+Loaded natural belief target: [0.11330239 0.13805105 0.14733179 0.14114462 0.46017015]
+Created 1416 enhanced item embeddings
+Loaded cluster distances: torch.Size([2585])
+Loaded cluster centers for 5 clusters
+Created item-to-index mapping for 1842 items
+Loaded cluster sizes: [ 293.  357.  381.  365. 1190.]
+Total items in dataset: 2586.0
+Loaded cluster assignments for 2586 items across 5 clusters
+Cluster distribution:
+  Cluster 0: 293 items
+  Cluster 1: 357 items
+  Cluster 2: 381 items
+  Cluster 3: 365 items
+  Cluster 4: 1190 items
+Mapping examples: [('M53121', 2), ('M3034', 2), ('M6947', 2)]
+Initializing user accepted counts from initial beliefs...
+  Cold-start prior applied to 332 users (total_accepted=0)
+Initialized counts for 332 users
+Initializing GPU tensors...
+Item embeddings tensor (pre-normalized): torch.Size([1416, 64]) on cpu
+Enhanced embeddings: normalized(item_norm + cluster_norm) ready for cosine similarity
+User embeddings tensor: torch.Size([332, 64]) on cpu
+Initializing reward calculation tensors...
+Optimal beliefs tensor: torch.Size([5]) on cpu
+User beliefs tensor: torch.Size([332, 5]) on cpu
+Max distances tensor: torch.Size([332, 5]) on cpu
+Termination threshold: 0.15
+Entropy reward weight: 1.0
+GPU tensors initialized successfully!
+Environment initialized with 332 users
+Item embeddings: 1843 items
+Cluster embeddings: 5 clusters
+Enhanced item embeddings: 1416 items
+Pretrained recommendations: 332 users (using numeric tokens)
+User token mapping: 332 users
+Device: cpu
+Mapping verification: User U1 → Token 0, Item M53121 → Token 0
+ERROR: no model found; specify --model_path or place a checkpoint in models/.

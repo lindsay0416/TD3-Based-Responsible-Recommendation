@@ -1,0 +1,377 @@
+============================================================
+RECOMMENDATION RL SYSTEM
+Twin Delayed Deep Deterministic Policy Gradient (TD3)
+for Recommendation System Filter Bubble Reduction
+============================================================
+Start Time: 2026-05-26 10:33:53
+Configuration loaded from: _configs_tmp/config_movies_ENMF.yaml
+
+============================================================
+EXPERIMENT CONFIGURATION
+============================================================
+  Dataset: movies
+  TopK: 5
+  RS Model: ENMF
+============================================================
+
+============================================================
+CONFIGURATION SUMMARY
+============================================================
+Training Episodes: 50
+Rounds per Episode: 50
+Users per Round: 50000
+Batch Size: 1000
+Total Rounds: 2500
+
+TD3 Parameters:
+  Discount (γ): 0.95
+  Batch Size: 128
+  Learning Rate: 0.0003
+
+Environment:
+  State Dimension: 69
+  Action Dimension: 64
+  User Acceptance Rate: 0.25
+
+Recommendation:
+  RL List Size: 60
+  Total Recommendations: 100
+
+Reward (Step-based):
+  Termination Threshold: 0.15
+  Termination Reward: 5.0
+  Max Cluster Distance: 1.0
+  Use GPU Rewards: True
+============================================================
+
+Estimated training time: 0.1 hours
+This will train a TD3 agent to reduce filter bubbles in recommendations.
+
+Proceed with training? (y/N): /Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/recommendation_environment.py:282: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/torch/csrc/utils/tensor_new.cpp:256.)
+  self.enhanced_embeddings_tensor_normalized = torch.FloatTensor(item_embeddings_list).to(self.device)
+
+Initializing trainer...
+
+Experiment: dataset=movies, topk=5, rs_model=ENMF
+Loaded natural belief target: [0.11330239 0.13805105 0.14733179 0.14114462 0.46017015]
+Created 1416 enhanced item embeddings
+Loaded cluster distances: torch.Size([2585])
+Loaded cluster centers for 5 clusters
+Created item-to-index mapping for 1842 items
+Loaded cluster sizes: [ 293.  357.  381.  365. 1190.]
+Total items in dataset: 2586.0
+Loaded cluster assignments for 2586 items across 5 clusters
+Cluster distribution:
+  Cluster 0: 293 items
+  Cluster 1: 357 items
+  Cluster 2: 381 items
+  Cluster 3: 365 items
+  Cluster 4: 1190 items
+Mapping examples: [('M53121', 2), ('M3034', 2), ('M6947', 2)]
+Initializing user accepted counts from initial beliefs...
+  Cold-start prior applied to 332 users (total_accepted=0)
+Initialized counts for 332 users
+Initializing GPU tensors...
+Item embeddings tensor (pre-normalized): torch.Size([1416, 64]) on cpu
+Enhanced embeddings: normalized(item_norm + cluster_norm) ready for cosine similarity
+User embeddings tensor: torch.Size([332, 64]) on cpu
+Initializing reward calculation tensors...
+Optimal beliefs tensor: torch.Size([5]) on cpu
+User beliefs tensor: torch.Size([332, 5]) on cpu
+Max distances tensor: torch.Size([332, 5]) on cpu
+Termination threshold: 0.15
+Entropy reward weight: 1.0
+GPU tensors initialized successfully!
+Environment initialized with 332 users
+Item embeddings: 1843 items
+Cluster embeddings: 5 clusters
+Enhanced item embeddings: 1416 items
+Pretrained recommendations: 332 users (using numeric tokens)
+User token mapping: 332 users
+Device: cpu
+Mapping verification: User U1 → Token 0, Item M53121 → Token 0
+TD3 agent initialized: 69D state → 64D action
+Using 332 users out of 332 total users
+TD3 training will start after 100000 transitions
+TD3 training frequency: every 1 rounds
+Trainer initialized successfully
+Training for 50 episodes
+Rounds per episode: 50
+Users per round: 332 (limited from config)
+Starting training...
+Starting training...
+Total episodes: 50
+Rounds per episode: 50
+Total rounds: 2500
+Model saved: results_table3_retrain/movies/ENMF/models/td3_recommendation_20260526_103354_initial
+
+==================================================
+Starting Episode 1
+==================================================
+Starting episode 1
+Episode 1, Round 1
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 1 completed in 0.13s - Round Reward: 1033.44 [Warmup (99668 left)]
+Episode 1, Round 2
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 2 completed in 0.11s - Round Reward: 2060.34 [Warmup (99336 left)]
+Episode 1, Round 3
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 3 completed in 0.11s - Round Reward: 2499.24 [Warmup (99004 left)]
+Episode 1, Round 4
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 4 completed in 0.11s - Round Reward: 2602.65 [Warmup (98672 left)]
+Episode 1, Round 5
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 5 completed in 0.11s - Round Reward: 2841.75 [Warmup (98340 left)]
+Episode 1, Round 6
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 6 completed in 0.11s - Round Reward: 2891.59 [Warmup (98008 left)]
+Episode 1, Round 7
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 7 completed in 0.11s - Round Reward: 2950.00 [Warmup (97676 left)]
+Episode 1, Round 8
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 8 completed in 0.10s - Round Reward: 3062.50 [Warmup (97344 left)]
+Episode 1, Round 9
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 9 completed in 0.10s - Round Reward: 3086.71 [Warmup (97012 left)]
+Episode 1, Round 10
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 10 completed in 0.11s - Round Reward: 3126.99 [Warmup (96680 left)]
+Episode 1, Round 10: Acceptance Rate: 0.101, Avg PP1: 0.991248
+Episode 1, Round 11
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 11 completed in 0.11s - Round Reward: 3167.83 [Warmup (96348 left)]
+Episode 1, Round 12
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 12 completed in 0.10s - Round Reward: 3226.02 [Warmup (96016 left)]
+Episode 1, Round 13
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 13 completed in 0.10s - Round Reward: 3260.54 [Warmup (95684 left)]
+Episode 1, Round 14
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 14 completed in 0.10s - Round Reward: 3257.62 [Warmup (95352 left)]
+Episode 1, Round 15
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 15 completed in 0.11s - Round Reward: 3275.48 [Warmup (95020 left)]
+Episode 1, Round 16
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 16 completed in 0.11s - Round Reward: 3267.52 [Warmup (94688 left)]
+Episode 1, Round 17
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 17 completed in 0.11s - Round Reward: 3309.38 [Warmup (94356 left)]
+Episode 1, Round 18
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 18 completed in 0.10s - Round Reward: 3286.39 [Warmup (94024 left)]
+Episode 1, Round 19
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 19 completed in 0.10s - Round Reward: 3356.96 [Warmup (93692 left)]
+Episode 1, Round 20
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 20 completed in 0.11s - Round Reward: 3387.72 [Warmup (93360 left)]
+Episode 1, Round 20: Acceptance Rate: 0.101, Avg PP1: 0.991248
+Episode 1, Round 21
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 21 completed in 0.11s - Round Reward: 3364.36 [Warmup (93028 left)]
+Episode 1, Round 22
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 22 completed in 0.11s - Round Reward: 3360.48 [Warmup (92696 left)]
+Episode 1, Round 23
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 23 completed in 0.10s - Round Reward: 3390.98 [Warmup (92364 left)]
+Episode 1, Round 24
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 24 completed in 0.10s - Round Reward: 3422.83 [Warmup (92032 left)]
+Episode 1, Round 25
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 25 completed in 0.11s - Round Reward: 3425.94 [Warmup (91700 left)]
+Episode 1, Round 26
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 26 completed in 0.11s - Round Reward: 3398.17 [Warmup (91368 left)]
+Episode 1, Round 27
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 27 completed in 0.11s - Round Reward: 3420.49 [Warmup (91036 left)]
+Episode 1, Round 28
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 28 completed in 0.11s - Round Reward: 3441.32 [Warmup (90704 left)]
+Episode 1, Round 29
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 29 completed in 0.11s - Round Reward: 3421.17 [Warmup (90372 left)]
+Episode 1, Round 30
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 30 completed in 0.15s - Round Reward: 3441.15 [Warmup (90040 left)]
+Episode 1, Round 30: Acceptance Rate: 0.101, Avg PP1: 0.991248
+Episode 1, Round 31
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 31 completed in 0.10s - Round Reward: 3433.46 [Warmup (89708 left)]
+Episode 1, Round 32
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 32 completed in 0.10s - Round Reward: 3432.31 [Warmup (89376 left)]
+Episode 1, Round 33
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 33 completed in 0.17s - Round Reward: 3493.13 [Warmup (89044 left)]
+Episode 1, Round 34
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 34 completed in 0.11s - Round Reward: 3471.77 [Warmup (88712 left)]
+Episode 1, Round 35
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 35 completed in 0.11s - Round Reward: 3478.51 [Warmup (88380 left)]
+Episode 1, Round 36
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 36 completed in 0.11s - Round Reward: 3478.10 [Warmup (88048 left)]
+Episode 1, Round 37
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 37 completed in 0.12s - Round Reward: 3493.35 [Warmup (87716 left)]
+Episode 1, Round 38
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 38 completed in 0.11s - Round Reward: 3485.06 [Warmup (87384 left)]
+Episode 1, Round 39
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 39 completed in 0.11s - Round Reward: 3525.08 [Warmup (87052 left)]
+Episode 1, Round 40
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 40 completed in 0.11s - Round Reward: 3508.60 [Warmup (86720 left)]
+Episode 1, Round 40: Acceptance Rate: 0.101, Avg PP1: 0.991248
+Episode 1, Round 41
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 41 completed in 0.11s - Round Reward: 3500.71 [Warmup (86388 left)]
+Episode 1, Round 42
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 42 completed in 0.11s - Round Reward: 3513.37 [Warmup (86056 left)]
+Episode 1, Round 43
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 43 completed in 0.11s - Round Reward: 3466.23 [Warmup (85724 left)]
+Episode 1, Round 44
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 44 completed in 0.11s - Round Reward: 3499.74 [Warmup (85392 left)]
+Episode 1, Round 45
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 45 completed in 0.11s - Round Reward: 3534.00 [Warmup (85060 left)]
+Episode 1, Round 46
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 46 completed in 0.11s - Round Reward: 3520.81 [Warmup (84728 left)]
+Episode 1, Round 47
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 47 completed in 0.11s - Round Reward: 3503.36 [Warmup (84396 left)]
+Episode 1, Round 48
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 48 completed in 0.10s - Round Reward: 3552.09 [Warmup (84064 left)]
+Episode 1, Round 49
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 49 completed in 0.11s - Round Reward: 3547.19 [Warmup (83732 left)]
+Episode 1, Round 50
+  Processing batch 1/1 (332 users) - 0.00s elapsed
+  Round 50 completed in 0.11s - Round Reward: 3558.26 [Warmup (83400 left)]
+Episode 1, Round 50: Acceptance Rate: 0.101, Avg PP1: 0.991248
+
+============================================================
+Analyzing Replay Buffer Quality (Episode 1)
+============================================================
+================================================================================
+REPLAY BUFFER QUALITY ANALYSIS
+================================================================================
+
+📊 1. Basic Statistics
+--------------------------------------------------------------------------------
+Buffer使用率:     16,600 / 1,000,000 (1.7%)
+
+Reward统计:
+  平均值:         9.8212
+  中位数:         10.0867
+  标准差:         2.2278
+  最小值:         0.0000
+  Maximum:        16.5724
+
+完成状态:
+  达到目标的经验: 16,134 (97.19%)
+  未完成的经验:   466 (2.81%)
+
+📈 2. Reward分布分析
+--------------------------------------------------------------------------------
+Reward Distribution:
+  Negative rewards (< 0):     0 (0.00%)
+  Zero rewards (= 0):         192 (1.16%)
+  Small positive (0-1):       133 (0.80%)
+  Medium positive (1-5):      178 (1.07%)
+  Large positive (≥ 5):       16,097 (96.97%)
+
+Quality Assessment:
+  ✅ 16,097 high-quality experiences (reward ≥ 5)
+
+Reward Percentiles:
+  10%: 7.7017
+  25%: 8.9294
+  50%: 10.0867
+  75%: 11.1370
+  90%: 12.0724
+  95%: 12.6201
+  99%: 13.6091
+
+🎨 3. State Diversity Analysis
+--------------------------------------------------------------------------------
+Belief统计 (前5维):
+  Cluster 0:
+    平均值: 0.122036
+    标准差: 0.050302
+    范围:   [0.000000, 0.556188]
+  Cluster 1:
+    平均值: 0.164190
+    标准差: 0.061300
+    范围:   [0.000000, 0.569026]
+  Cluster 2:
+    平均值: 0.148057
+    标准差: 0.057433
+    范围:   [0.000000, 0.573634]
+  Cluster 3:
+    平均值: 0.140649
+    标准差: 0.057017
+    范围:   [0.000000, 0.570462]
+  Cluster 4:
+    平均值: 0.301996
+    标准差: 0.104886
+    范围:   [0.000000, 0.730057]
+
+Diversity Assessment:
+  Total variance: 0.023839
+  ✅ Reasonable variance - states have good diversity
+
+  Unique state count: 16,552 / 16,600 (99.7%)
+  ✅ 唯一state占比合理
+
+📚 4. 学习进度分析
+--------------------------------------------------------------------------------
+Belief变化统计:
+  平均变化量: 0.014662
+  Maximum change: 0.730057
+
+Effective learning experiences:
+  有显著变化: 16,569 (99.81%)
+  无显著变化: 31 (0.19%)
+  ✅ Reasonable proportion of effective experiences
+
+朝向目标的进步:
+  改进的经验: 6,789 (40.90%)
+  退步的经验: 9,811 (59.10%)
+  ✅ 改进经验占比合理
+
+🔍 5. 异常检测
+--------------------------------------------------------------------------------
+⚠️  发现异常:
+  - 发现447个异常reward值
+
+⭐ 6. 总体质量评分
+--------------------------------------------------------------------------------
+总体评分: 87.7 / 100
+
+评分细节:
+  Reward质量:   29.7 / 30
+  State多样性:  19.9 / 20
+  学习效果:     29.9 / 30
+  Progress ratio:     8.2 / 20
+
+评级: A (Excellent)
+✅ Buffer质量很好，包含高质量的学习经验
+
+Error during training: [Errno 2] No such file or directory: 'results/buffer_quality_episode_1.json'
+Check the configuration and data files.

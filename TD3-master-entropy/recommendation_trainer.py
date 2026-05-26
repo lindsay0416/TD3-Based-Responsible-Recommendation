@@ -510,8 +510,8 @@ class RecommendationTrainer:
         # Save current user beliefs after each episode (overwrites same file)
         self.save_current_user_beliefs(episode_num)
         
-        # Save model periodically
-        if episode_num % 10 == 0:
+        # Save model periodically - save every episode for Table 3 retrain
+        if episode_num % 5 == 0 or episode_num == self.config['training']['episodes']:
             self.save_model(f"episode_{episode_num}")
         
         return episode_stats
@@ -620,6 +620,9 @@ class RecommendationTrainer:
         print(f"Total episodes: {self.config['training']['episodes']}")
         print(f"Rounds per episode: {self.config['training']['rounds_per_episode']}")
         print(f"Total rounds: {self.config['training']['episodes'] * self.config['training']['rounds_per_episode']}")
+        
+        # Save initial model
+        self.save_model("initial")
         
         start_time = datetime.now()
         

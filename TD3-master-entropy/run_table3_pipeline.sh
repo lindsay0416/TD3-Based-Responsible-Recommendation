@@ -74,6 +74,11 @@ for dataset in $DATASETS; do
     MODELS_DIR="${CELL_OUT}/models"
     EVAL_DIR="${EVAL_OUT_ROOT}/${dataset}/K_means/${backbone}"
 
+    # Create output directories
+    mkdir -p "$CELL_OUT"
+    mkdir -p "$MODELS_DIR"
+    mkdir -p "$EVAL_DIR"
+
     echo ""
     echo "=========================================================="
     echo "  CELL: ${CELL}"
