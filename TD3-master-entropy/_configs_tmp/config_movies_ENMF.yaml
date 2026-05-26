@@ -61,19 +61,19 @@ reward:
   reward_aggregation_window: 50
 
 data_paths:
-  item_embeddings: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/ENMF/item_embedding.pkl"
-  user_embeddings: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/ENMF/user_embedding.pkl"
-  recommendations: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/ENMF/recommendations.pkl"
-  item_token_map: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/item_token_map.json"
-  user_token_map: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/user_token_map.json"
-  cluster_assignments: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/cluster_matrix_manifest_K5_topk5.json"
-  cluster_centers: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/cluster_centers_K5_topk5.json"
-  cluster_distances: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/cluster_distances_K5_topk5.pt"
-  test_set: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/test_set.csv"
-  test_set_info: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/embeddings/movies/Topk5/test_set_info.json"
-  cluster_embeddings: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/processed_data/movies/Topk5/cluster_embeddings.pkl"
-  natural_beliefs: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/processed_data/movies/Topk5/natural_belief_target.json"
-  user_beliefs: "/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy/processed_data/movies/Topk5/user_average_beliefs.json"
+  item_embeddings: "embeddings/movies/K_means/ENMF/item_embedding.pkl"
+  user_embeddings: "embeddings/movies/K_means/ENMF/user_embedding.pkl"
+  recommendations: "embeddings/movies/K_means/ENMF/recommendations.pkl"
+  item_token_map: "embeddings/movies/K_means/item_token_map.json"
+  user_token_map: "embeddings/movies/K_means/user_token_map.json"
+  cluster_assignments: "embeddings/movies/K_means/cluster_matrix_manifest_K5.json"
+  cluster_centers: "embeddings/movies/K_means/cluster_centroids.json"
+  cluster_distances: "embeddings/movies/K_means/cluster_distances_K5.pt"
+  test_set: "embeddings/movies/K_means/test_set.csv"
+  test_set_info: "embeddings/movies/K_means/test_set_info.json"
+  cluster_embeddings: "processed_data/movies/K_means/cluster_embeddings.pkl"
+  natural_beliefs: "processed_data/movies/K_means/natural_belief_target.json"
+  user_beliefs: "processed_data/movies/K_means/user_average_beliefs.json"
 
 logging:
   save_frequency: 1000
