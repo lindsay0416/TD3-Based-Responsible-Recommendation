@@ -3,14 +3,14 @@
 #
 # Placeholders filled at render time:
 #   movies        -> news | books | movies
-#   ENMF       -> ENMF | LightGCN | NCL | NGCF | SGL
+#   LightGCN       -> ENMF | LightGCN | NCL | NGCF | SGL
 #   /Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy      -> absolute path to TD3-master-entropy/ on the host
 #   3500  -> 3500 (Table 3 canonical) by default
 #   results_table3_retrain       -> base dir for results/models output
 
 experiment_params:
   topk: 5
-  rs_model: "ENMF"
+  rs_model: "LightGCN"
   dataset: "movies"
   clustering: K_means       # historical name; Phase 2 stores Path A clusters under this key
 
@@ -61,9 +61,9 @@ reward:
   reward_aggregation_window: 50
 
 data_paths:
-  item_embeddings: "embeddings/movies/Topk5/ENMF/item_embedding.pkl"
-  user_embeddings: "embeddings/movies/Topk5/ENMF/user_embedding.pkl"
-  recommendations: "embeddings/movies/Topk5/ENMF/recommendations.pkl"
+  item_embeddings: "embeddings/movies/Topk5/LightGCN/item_embedding.pkl"
+  user_embeddings: "embeddings/movies/Topk5/LightGCN/user_embedding.pkl"
+  recommendations: "embeddings/movies/Topk5/LightGCN/recommendations.pkl"
   item_token_map: "embeddings/movies/Topk5/item_token_map.json"
   user_token_map: "embeddings/movies/Topk5/user_token_map.json"
   cluster_assignments: "embeddings/movies/Topk5/cluster_matrix_manifest_K5_topk5.json"
@@ -78,8 +78,8 @@ data_paths:
 logging:
   save_frequency: 1000
   log_frequency: 100
-  results_dir: "results_table3_retrain/movies/ENMF/results"
-  models_dir: "results_table3_retrain/movies/ENMF/models"
+  results_dir: "results_table3_retrain/movies/LightGCN/results"
+  models_dir: "results_table3_retrain/movies/LightGCN/models"
 
 experiment:
   seed: 42

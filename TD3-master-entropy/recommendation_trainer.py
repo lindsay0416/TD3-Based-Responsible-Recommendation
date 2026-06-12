@@ -62,9 +62,11 @@ class RecommendationTrainer:
         # Get user list and limit based on config
         all_users = list(self.env.users.keys())
         max_users = self.config['training']['users_per_round']
+        # Limit max_users to actual number of users
+        max_users = min(max_users, len(all_users))
         self.user_list = all_users[:max_users]  # Take first N users
         
-        print(f"Using {len(self.user_list)} users out of {len(all_users)} total users")
+        print(f"Using {len(self.user_list)} users out of {len(all_users)} total users (config users_per_round={self.config['training']['users_per_round']})")
         print(f"TD3 training will start after {self.config['training']['warmup_transitions']} transitions")
         print(f"TD3 training frequency: every {self.config['training']['train_frequency']} rounds")
         
@@ -388,7 +390,9 @@ class RecommendationTrainer:
         
         analyzer = ReplayBufferAnalyzer(self.replay_buffer)
         analyzer.analyze_quality()
-        analyzer.save_analysis_report(f"results/buffer_quality_episode_{self.env.current_episode}.json")
+        # Use the configured results_dir instead of hardcoded "results/"
+        report_path = os.path.join(self.config['logging']['results_dir'], f"buffer_quality_episode_{self.env.current_episode}.json")
+        analyzer.save_analysis_report(report_path)
     
     def run_episode(self, episode_num: int) -> Dict:
         """
@@ -510,8 +514,8 @@ class RecommendationTrainer:
         # Save current user beliefs after each episode (overwrites same file)
         self.save_current_user_beliefs(episode_num)
         
-        # Save model periodically - save every episode for Table 3 retrain
-        if episode_num % 5 == 0 or episode_num == self.config['training']['episodes']:
+        # Save model periodically
+        if episode_num % 10 == 0:
             self.save_model(f"episode_{episode_num}")
         
         return episode_stats
@@ -620,9 +624,6 @@ class RecommendationTrainer:
         print(f"Total episodes: {self.config['training']['episodes']}")
         print(f"Rounds per episode: {self.config['training']['rounds_per_episode']}")
         print(f"Total rounds: {self.config['training']['episodes'] * self.config['training']['rounds_per_episode']}")
-        
-        # Save initial model
-        self.save_model("initial")
         
         start_time = datetime.now()
         

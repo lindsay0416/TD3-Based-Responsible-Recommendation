@@ -17,9 +17,9 @@ experiment_params:
 training:
   episodes: 50              # paper §5 canonical: 50-episode training
   rounds_per_episode: 50
-  users_per_round: 50000
+  users_per_round: 5000     # Default value
   batch_size: 1000
-  warmup_transitions: 100000
+  warmup_transitions: 5000  # Default value
   train_frequency: 1
 
 td3:
@@ -61,19 +61,19 @@ reward:
   reward_aggregation_window: 50
 
 data_paths:
-  item_embeddings: "{BASE_PATH}/embeddings/{DATASET}/Topk5/{BACKBONE}/item_embedding.pkl"
-  user_embeddings: "{BASE_PATH}/embeddings/{DATASET}/Topk5/{BACKBONE}/user_embedding.pkl"
-  recommendations: "{BASE_PATH}/embeddings/{DATASET}/Topk5/{BACKBONE}/recommendations.pkl"
-  item_token_map: "{BASE_PATH}/embeddings/{DATASET}/Topk5/item_token_map.json"
-  user_token_map: "{BASE_PATH}/embeddings/{DATASET}/Topk5/user_token_map.json"
-  cluster_assignments: "{BASE_PATH}/embeddings/{DATASET}/Topk5/cluster_matrix_manifest_K5_topk5.json"
-  cluster_centers: "{BASE_PATH}/embeddings/{DATASET}/Topk5/cluster_centers_K5_topk5.json"
-  cluster_distances: "{BASE_PATH}/embeddings/{DATASET}/Topk5/cluster_distances_K5_topk5.pt"
-  test_set: "{BASE_PATH}/embeddings/{DATASET}/Topk5/test_set.csv"
-  test_set_info: "{BASE_PATH}/embeddings/{DATASET}/Topk5/test_set_info.json"
-  cluster_embeddings: "{BASE_PATH}/processed_data/{DATASET}/Topk5/cluster_embeddings.pkl"
-  natural_beliefs: "{BASE_PATH}/processed_data/{DATASET}/Topk5/natural_belief_target.json"
-  user_beliefs: "{BASE_PATH}/processed_data/{DATASET}/Topk5/user_average_beliefs.json"
+  item_embeddings: "embeddings/{DATASET}/Topk5/{BACKBONE}/item_embedding.pkl"
+  user_embeddings: "embeddings/{DATASET}/Topk5/{BACKBONE}/user_embedding.pkl"
+  recommendations: "embeddings/{DATASET}/Topk5/{BACKBONE}/recommendations.pkl"
+  item_token_map: "embeddings/{DATASET}/Topk5/item_token_map.json"
+  user_token_map: "embeddings/{DATASET}/Topk5/user_token_map.json"
+  cluster_assignments: "embeddings/{DATASET}/Topk5/cluster_matrix_manifest_K5_topk5.json"
+  cluster_centers: "embeddings/{DATASET}/Topk5/cluster_centers_K5_topk5.json"
+  cluster_distances: "embeddings/{DATASET}/Topk5/cluster_distances_K5_topk5.pt"
+  test_set: "embeddings/{DATASET}/Topk5/test_set.csv"
+  test_set_info: "embeddings/{DATASET}/Topk5/test_set_info.json"
+  cluster_embeddings: "processed_data/{DATASET}/Topk5/cluster_embeddings.pkl"
+  natural_beliefs: "processed_data/{DATASET}/Topk5/natural_belief_target.json"
+  user_beliefs: "processed_data/{DATASET}/Topk5/user_average_beliefs.json"
 
 logging:
   save_frequency: 1000

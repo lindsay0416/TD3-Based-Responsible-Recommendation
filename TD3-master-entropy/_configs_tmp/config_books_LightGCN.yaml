@@ -2,16 +2,16 @@
 # This template is rendered per (dataset, backbone) by generate_config.py.
 #
 # Placeholders filled at render time:
-#   movies        -> news | books | movies
-#   ENMF       -> ENMF | LightGCN | NCL | NGCF | SGL
+#   books        -> news | books | movies
+#   LightGCN       -> ENMF | LightGCN | NCL | NGCF | SGL
 #   /Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy      -> absolute path to TD3-master-entropy/ on the host
 #   3500  -> 3500 (Table 3 canonical) by default
 #   results_table3_retrain       -> base dir for results/models output
 
 experiment_params:
   topk: 5
-  rs_model: "ENMF"
-  dataset: "movies"
+  rs_model: "LightGCN"
+  dataset: "books"
   clustering: K_means       # historical name; Phase 2 stores Path A clusters under this key
 
 training:
@@ -61,25 +61,25 @@ reward:
   reward_aggregation_window: 50
 
 data_paths:
-  item_embeddings: "embeddings/movies/Topk5/ENMF/item_embedding.pkl"
-  user_embeddings: "embeddings/movies/Topk5/ENMF/user_embedding.pkl"
-  recommendations: "embeddings/movies/Topk5/ENMF/recommendations.pkl"
-  item_token_map: "embeddings/movies/Topk5/item_token_map.json"
-  user_token_map: "embeddings/movies/Topk5/user_token_map.json"
-  cluster_assignments: "embeddings/movies/Topk5/cluster_matrix_manifest_K5_topk5.json"
-  cluster_centers: "embeddings/movies/Topk5/cluster_centers_K5_topk5.json"
-  cluster_distances: "embeddings/movies/Topk5/cluster_distances_K5_topk5.pt"
-  test_set: "embeddings/movies/Topk5/test_set.csv"
-  test_set_info: "embeddings/movies/Topk5/test_set_info.json"
-  cluster_embeddings: "processed_data/movies/Topk5/cluster_embeddings.pkl"
-  natural_beliefs: "processed_data/movies/Topk5/natural_belief_target.json"
-  user_beliefs: "processed_data/movies/Topk5/user_average_beliefs.json"
+  item_embeddings: "embeddings/books/Topk5/LightGCN/item_embedding.pkl"
+  user_embeddings: "embeddings/books/Topk5/LightGCN/user_embedding.pkl"
+  recommendations: "embeddings/books/Topk5/LightGCN/recommendations.pkl"
+  item_token_map: "embeddings/books/Topk5/item_token_map.json"
+  user_token_map: "embeddings/books/Topk5/user_token_map.json"
+  cluster_assignments: "embeddings/books/Topk5/cluster_matrix_manifest_K5_topk5.json"
+  cluster_centers: "embeddings/books/Topk5/cluster_centers_K5_topk5.json"
+  cluster_distances: "embeddings/books/Topk5/cluster_distances_K5_topk5.pt"
+  test_set: "embeddings/books/Topk5/test_set.csv"
+  test_set_info: "embeddings/books/Topk5/test_set_info.json"
+  cluster_embeddings: "processed_data/books/Topk5/cluster_embeddings.pkl"
+  natural_beliefs: "processed_data/books/Topk5/natural_belief_target.json"
+  user_beliefs: "processed_data/books/Topk5/user_average_beliefs.json"
 
 logging:
   save_frequency: 1000
   log_frequency: 100
-  results_dir: "results_table3_retrain/movies/ENMF/results"
-  models_dir: "results_table3_retrain/movies/ENMF/models"
+  results_dir: "results_table3_retrain/books/LightGCN/results"
+  models_dir: "results_table3_retrain/books/LightGCN/models"
 
 experiment:
   seed: 42

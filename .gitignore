@@ -13,3 +13,4 @@ news/
 movies/
 .vscode
 logs/
+*.zip

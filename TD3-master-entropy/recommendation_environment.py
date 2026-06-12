@@ -278,8 +278,12 @@ class RecommendationEnvironment:
             # Enhanced embeddings are now already normalized 64D vectors (item + cluster, normalized)
             item_embeddings_list = [self.enhanced_item_embeddings[item_id] for item_id in item_ids]
             
+            # Convert list to numpy array first for better performance
+            import numpy as np
+            item_embeddings_array = np.array(item_embeddings_list, dtype=np.float32)
+            
             # Create tensor (already normalized during creation, no need to normalize again)
-            self.enhanced_embeddings_tensor_normalized = torch.FloatTensor(item_embeddings_list).to(self.device)
+            self.enhanced_embeddings_tensor_normalized = torch.FloatTensor(item_embeddings_array).to(self.device)
             self.item_ids_list = item_ids  # Keep mapping for results
             
             print(f"Item embeddings tensor (pre-normalized): {self.enhanced_embeddings_tensor_normalized.shape} on {self.device}")

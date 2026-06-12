@@ -1,21 +1,28 @@
 #!/bin/bash
-# 重新生成所有配置文件
 
-DATASETS="news books movies"
-BACKBONES="ENMF LightGCN NCL NGCF SGL"
+# Regenerate all config files with updated template
+# 3 datasets: news, books, movies
+# 5 models: ENMF, LightGCN, NCL, NGCF, SGL
 
-for dataset in $DATASETS; do
-  for backbone in $BACKBONES; do
-    echo "生成 config_${dataset}_${backbone}.yaml"
-    python generate_config.py \
-      --template config_template.yaml \
-      --dataset "$dataset" \
-      --rs_model "$backbone" \
-      --base_path . \
-      --out_root results_table3_retrain \
-      --sigmoid_scale 3500 \
-      --out "_configs_tmp/config_${dataset}_${backbone}.yaml"
-  done
+BASE_PATH="/Users/lindsay/Desktop/Git/TD3-Based-Responsible-Recommendation/TD3-master-entropy"
+OUT_ROOT="results_table3_retrain"
+SIGMOID_SCALE=3500
+OUT_DIR="_configs_tmp"
+
+mkdir -p "$OUT_DIR"
+
+for DATASET in news books movies; do
+    for MODEL in ENMF LightGCN NCL NGCF SGL; do
+        echo "Generating config for $DATASET $MODEL..."
+        python generate_config.py \
+            --template config_template.yaml \
+            --dataset "$DATASET" \
+            --rs_model "$MODEL" \
+            --base_path "$BASE_PATH" \
+            --out_root "$OUT_ROOT" \
+            --sigmoid_scale "$SIGMOID_SCALE" \
+            --out "$OUT_DIR/config_${DATASET}_${MODEL}.yaml"
+    done
 done
 
-echo "所有配置文件已重新生成"
+echo "All configs regenerated in $OUT_DIR/"
